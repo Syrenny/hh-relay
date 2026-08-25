@@ -125,6 +125,38 @@ HTML в поле `description` возвращается без исполнен�
 
 Невалидные query-параметры возвращают стандартный ответ FastAPI `422`.
 
+## MCP для ChatGPT
+
+Stateless Streamable HTTP endpoint:
+
+```text
+https://hh-relay.vercel.app/mcp
+```
+
+MCP работает без авторизации и предоставляет два read-only инструмента:
+
+- `search_vacancies` — компактный поиск за последние 24 часа;
+- `get_vacancy` — полная карточка по ID.
+
+При подключении в ChatGPT укажите URL `/mcp` и вариант **No authentication**. Названия разделов интерфейса могут различаться в зависимости от плана и режима ChatGPT; после добавления выполните Scan/Refresh tools и убедитесь, что обнаружены оба инструмента.
+
+Пример инструкции для периодической задачи:
+
+```text
+Каждый день в 09:00 вызови search_vacancies с запросом "Python backend",
+опытом between1And3 и регионом 1. Выбери наиболее подходящие вакансии.
+Для выбранных ID вызови get_vacancy и пришли краткий отчёт со ссылками.
+```
+
+Проверить MCP вручную:
+
+```bash
+curl https://hh-relay.vercel.app/mcp \
+  --header 'Content-Type: application/json' \
+  --header 'Accept: application/json, text/event-stream' \
+  --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"curl","version":"1"}}}'
+```
+
 ## Проверки
 
 ```bash

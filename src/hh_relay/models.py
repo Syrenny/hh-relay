@@ -39,7 +39,7 @@ class Area(BaseModel):
 
 
 class Salary(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, serialize_by_alias=True)
 
     from_: int | None = Field(default=None, serialization_alias="from")
     to: int | None = None

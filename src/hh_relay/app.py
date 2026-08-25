@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from hh_relay.action_schema import build_action_schema
 from hh_relay.client import HHClient, create_http_client
 from hh_relay.errors import RelayError
+from hh_relay.mcp_server import mcp_http_app
 from hh_relay.models import (
     ErrorDetail,
     ErrorResponse,
@@ -22,7 +23,10 @@ from hh_relay.service import VacancyService
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    async with create_http_client() as http_client:
+    async with (
+        create_http_client() as http_client,
+        mcp_http_app.router.lifespan_context(mcp_http_app),
+    ):
         app.state.hh_client = HHClient(http_client)
         yield
 
@@ -117,3 +121,4 @@ async def get_vacancy(
 
 
 app.openapi = build_action_schema
+app.mount("/", mcp_http_app)

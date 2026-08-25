@@ -15,7 +15,7 @@ DETAIL_FIXTURE_PATH = Path(__file__).parent / "fixtures" / "vacancy.html"
 
 
 @pytest.fixture
-def client() -> TestClient:
+def client(asgi_client: TestClient) -> TestClient:
     def handler(request: httpx.Request) -> httpx.Response:
         fixture = (
             DETAIL_FIXTURE_PATH
@@ -34,8 +34,8 @@ def client() -> TestClient:
         14,
         tzinfo=UTC,
     )
-    with TestClient(app) as test_client:
-        yield test_client
+    yield asgi_client
+    asyncio.run(http_client.aclose())
     app.dependency_overrides.clear()
 
 
