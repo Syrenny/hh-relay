@@ -6,9 +6,14 @@ from hh_relay.errors import (
     UpstreamForbiddenError,
     UpstreamHTTPError,
     UpstreamTimeoutError,
+    VacancyNotFoundError,
 )
-from hh_relay.models import Experience, UpstreamVacancy
-from hh_relay.parser import extract_vacancies
+from hh_relay.models import (
+    Experience,
+    UpstreamSearchResult,
+    UpstreamVacancyDetail,
+)
+from hh_relay.parser import extract_search_result, extract_vacancy_detail
 
 HH_SEARCH_URL: Final = "https://hh.ru/search/vacancy"
 DEFAULT_HEADERS: Final = {
@@ -26,36 +31,56 @@ class HHClient:
     def __init__(self, http_client: httpx.AsyncClient) -> None:
         self._http_client = http_client
 
-    async def search(
+    async def search_page(
         self,
         *,
         text: str,
         area: int | None,
         experience: Experience | None,
         page: int,
-    ) -> list[UpstreamVacancy]:
+    ) -> UpstreamSearchResult:
         params: dict[str, str | int] = {
             "text": text,
             "page": page,
             "enable_snippets": "true",
+            "order_by": "publication_time",
         }
         if area is not None:
             params["area"] = area
         if experience is not None:
             params["experience"] = experience.value
 
+        response = await self._get(HH_SEARCH_URL, params=params)
+        return extract_search_result(response.text).vacancy_search_result
+
+    async def get_vacancy(self, vacancy_id: int) -> UpstreamVacancyDetail:
+        response = await self._get(
+            f"https://hh.ru/vacancy/{vacancy_id}",
+            vacancy_not_found=True,
+        )
+        return extract_vacancy_detail(response.text)
+
+    async def _get(
+        self,
+        url: str,
+        *,
+        params: dict[str, str | int] | None = None,
+        vacancy_not_found: bool = False,
+    ) -> httpx.Response:
         try:
-            response = await self._http_client.get(HH_SEARCH_URL, params=params)
+            response = await self._http_client.get(url, params=params)
         except httpx.TimeoutException as error:
             raise UpstreamTimeoutError from error
         except httpx.HTTPError as error:
             raise UpstreamHTTPError from error
 
+        if response.status_code == httpx.codes.NOT_FOUND and vacancy_not_found:
+            raise VacancyNotFoundError
         if response.status_code == httpx.codes.FORBIDDEN:
             raise UpstreamForbiddenError
         if response.is_error:
             raise UpstreamHTTPError
-        return extract_vacancies(response.text)
+        return response
 
 
 def create_http_client() -> httpx.AsyncClient:

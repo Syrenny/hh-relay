@@ -26,18 +26,6 @@ class SearchQuery(BaseModel):
         default=None,
         description="Требуемый опыт работы в формате hh.ru.",
     )
-    page: int = Field(
-        default=0,
-        ge=0,
-        le=100,
-        description="Номер страницы; первая страница имеет номер 0.",
-    )
-    hours: int = Field(
-        default=24,
-        ge=1,
-        le=24 * 30,
-        description="Оставить вакансии за последние N часов.",
-    )
 
 
 class Employer(BaseModel):
@@ -85,6 +73,26 @@ class Vacancy(BaseModel):
 class SearchResponse(BaseModel):
     count: int
     vacancies: list[Vacancy]
+    pages_fetched: int
+    truncated: bool
+    cutoff: datetime
+
+
+class Address(BaseModel):
+    display_name: str | None = None
+    city: str | None = None
+    street: str | None = None
+
+
+class VacancyDetail(Vacancy):
+    description: str
+    valid_through: datetime | None = None
+    key_skills: list[str]
+    address: Address | None = None
+    employment_form: str | None = None
+    work_formats: list[str]
+    work_schedule_by_days: list[str]
+    working_hours: list[str]
 
 
 class HealthResponse(BaseModel):
@@ -154,6 +162,7 @@ class UpstreamVacancy(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     vacancy_id: int | str = Field(alias="vacancyId")
+    is_adv: bool = Field(default=False, alias="@isAdv")
     name: str
     links: UpstreamLinks
     view_url: str | None = Field(default=None, alias="viewUrl")
@@ -170,9 +179,66 @@ class UpstreamSearchResult(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     vacancies: list[UpstreamVacancy]
+    paging: "UpstreamPaging"
+
+
+class UpstreamPagingNext(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    page: int
+    disabled: bool
+
+
+class UpstreamPaging(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    next: UpstreamPagingNext
 
 
 class UpstreamInitialState(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     vacancy_search_result: UpstreamSearchResult = Field(alias="vacancySearchResult")
+
+
+class UpstreamAddress(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    display_name: str | None = Field(default=None, alias="displayName")
+    city: str | None = None
+    street: str | None = None
+
+
+class UpstreamKeySkills(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    key_skill: list[str] = Field(default_factory=list, alias="keySkill")
+
+
+class UpstreamVacancyDetail(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    vacancy_id: int | str = Field(alias="vacancyId")
+    name: str
+    description: str
+    publication_date: datetime = Field(alias="publicationDate")
+    valid_through_time: datetime | None = Field(default=None, alias="validThroughTime")
+    work_experience: str | None = Field(default=None, alias="workExperience")
+    company: UpstreamCompany | None = None
+    area: UpstreamArea | None = None
+    compensation: UpstreamCompensation | None = None
+    key_skills: UpstreamKeySkills | None = Field(default=None, alias="keySkills")
+    address: UpstreamAddress | None = None
+    employment_form: str | None = Field(default=None, alias="employmentForm")
+    work_formats: list[str] = Field(default_factory=list, alias="workFormats")
+    work_schedule_by_days: list[str] = Field(
+        default_factory=list,
+        alias="workScheduleByDays",
+    )
+    working_hours: list[str] = Field(default_factory=list, alias="workingHours")
+
+
+class UpstreamVacancyDetailState(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    vacancy_view: UpstreamVacancyDetail = Field(alias="vacancyView")

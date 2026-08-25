@@ -42,3 +42,12 @@ class UpstreamStructureError(RelayError):
             message="hh.ru response structure is not supported",
             status_code=502,
         )
+
+
+class VacancyNotFoundError(RelayError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="vacancy_not_found",
+            message="Vacancy was not found on hh.ru",
+            status_code=404,
+        )

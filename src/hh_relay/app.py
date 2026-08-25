@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, Query, Request
+from fastapi import Depends, FastAPI, Path, Query, Request
 from fastapi.responses import JSONResponse
 
 from hh_relay.client import HHClient, create_http_client
@@ -14,8 +14,9 @@ from hh_relay.models import (
     HealthResponse,
     SearchQuery,
     SearchResponse,
+    VacancyDetail,
 )
-from hh_relay.parser import filter_recent_unique, normalize_vacancy
+from hh_relay.service import VacancyService
 
 
 @asynccontextmanager
@@ -28,7 +29,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="hh.ru Vacancy Relay",
     description=(
-        "Поиск вакансий на hh.ru через SSR-страницу без использования api.hh.ru."
+        "Поиск вакансий за последние 24 часа и полные карточки через SSR hh.ru "
+        "без использования api.hh.ru."
     ),
     version="0.1.0",
     lifespan=lifespan,
@@ -73,8 +75,8 @@ async def health() -> HealthResponse:
     operation_id="searchVacancies",
     summary="Найти свежие вакансии на hh.ru",
     description=(
-        "Возвращает нормализованные вакансии, опубликованные за последние N часов, "
-        "без дублей по ID."
+        "Самостоятельно обходит страницы и возвращает нормализованные вакансии, "
+        "опубликованные за последние 24 часа, без дублей по ID."
     ),
     response_model_by_alias=True,
     responses={
@@ -87,12 +89,27 @@ async def search_vacancies(
     now: NowDependency,
     query: Annotated[SearchQuery, Query()],
 ) -> SearchResponse:
-    upstream_vacancies = await client.search(
+    return await VacancyService(client).search(
         text=query.text,
         area=query.area,
         experience=query.experience,
-        page=query.page,
+        now=now,
     )
-    normalized = [normalize_vacancy(item) for item in upstream_vacancies]
-    vacancies = filter_recent_unique(normalized, hours=query.hours, now=now)
-    return SearchResponse(count=len(vacancies), vacancies=vacancies)
+
+
+@app.get(
+    "/api/vacancies/{vacancy_id}",
+    operation_id="getVacancy",
+    summary="Получить полную карточку вакансии",
+    description="Возвращает полное HTML-описание и детали вакансии от hh.ru.",
+    responses={
+        404: {"model": ErrorResponse},
+        502: {"model": ErrorResponse},
+        504: {"model": ErrorResponse},
+    },
+)
+async def get_vacancy(
+    client: HHClientDependency,
+    vacancy_id: Annotated[int, Path(ge=1)],
+) -> VacancyDetail:
+    return await VacancyService(client).get_vacancy(vacancy_id)

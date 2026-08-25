@@ -1,10 +1,14 @@
-from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
 from hh_relay.errors import UpstreamStructureError
-from hh_relay.parser import extract_vacancies, filter_recent_unique, normalize_vacancy
+from hh_relay.parser import (
+    extract_vacancies,
+    extract_vacancy_detail,
+    normalize_vacancy,
+    normalize_vacancy_detail,
+)
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "search.html"
 
@@ -34,24 +38,23 @@ def test_extract_and_normalize_confirmed_ssr_fields() -> None:
         "frequency": "MONTHLY",
     }
     assert vacancy.experience == "between3And6"
-    assert vacancy.published_at == datetime(2026, 8, 25, 13, tzinfo=UTC)
+    assert vacancy.published_at.isoformat() == "2026-08-25T13:00:00+00:00"
     assert vacancy.snippet is not None
     assert vacancy.snippet.requirement == "Python & SQL"
     assert vacancy.snippet.responsibility == "Backend development"
 
 
-def test_filter_recent_and_deduplicate_by_vacancy_id() -> None:
-    normalized = [
-        normalize_vacancy(item) for item in extract_vacancies(FIXTURE_PATH.read_text())
-    ]
+def test_extract_and_normalize_vacancy_detail() -> None:
+    fixture = Path(__file__).parent / "fixtures" / "vacancy.html"
 
-    result = filter_recent_unique(
-        normalized,
-        hours=24,
-        now=datetime(2026, 8, 25, 14, tzinfo=UTC),
-    )
+    vacancy = normalize_vacancy_detail(extract_vacancy_detail(fixture.read_text()))
 
-    assert [vacancy.id for vacancy in result] == ["101"]
+    assert vacancy.id == "101"
+    assert vacancy.description == "<p>Full &amp; detailed description</p>"
+    assert vacancy.key_skills == ["Python", "FastAPI"]
+    assert vacancy.address is not None
+    assert vacancy.address.display_name == "Москва, Тверская улица"
+    assert vacancy.work_formats == ["REMOTE"]
 
 
 @pytest.mark.parametrize(

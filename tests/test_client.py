@@ -8,6 +8,7 @@ from hh_relay.errors import (
     UpstreamForbiddenError,
     UpstreamHTTPError,
     UpstreamTimeoutError,
+    VacancyNotFoundError,
 )
 from hh_relay.models import Experience
 
@@ -22,17 +23,18 @@ async def test_search_passes_supported_parameters() -> None:
         assert request.url.params["experience"] == "between1And3"
         assert request.url.params["page"] == "2"
         assert request.url.params["enable_snippets"] == "true"
+        assert request.url.params["order_by"] == "publication_time"
         return httpx.Response(200, text=FIXTURE_PATH.read_text())
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
-        vacancies = await HHClient(http).search(
+        result = await HHClient(http).search_page(
             text="Python",
             area=1,
             experience=Experience.BETWEEN_ONE_AND_THREE,
             page=2,
         )
 
-    assert len(vacancies) == 3
+    assert len(result.vacancies) == 3
 
 
 @pytest.mark.asyncio
@@ -52,7 +54,7 @@ async def test_search_maps_upstream_statuses(
     )
     async with httpx.AsyncClient(transport=transport) as http:
         with pytest.raises(expected_error):
-            await HHClient(http).search(
+            await HHClient(http).search_page(
                 text="Python",
                 area=None,
                 experience=None,
@@ -67,9 +69,17 @@ async def test_search_maps_timeout() -> None:
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(timeout)) as http:
         with pytest.raises(UpstreamTimeoutError):
-            await HHClient(http).search(
+            await HHClient(http).search_page(
                 text="Python",
                 area=None,
                 experience=None,
                 page=0,
             )
+
+
+@pytest.mark.asyncio
+async def test_get_vacancy_maps_not_found() -> None:
+    transport = httpx.MockTransport(lambda _request: httpx.Response(404))
+    async with httpx.AsyncClient(transport=transport) as http:
+        with pytest.raises(VacancyNotFoundError):
+            await HHClient(http).get_vacancy(999)

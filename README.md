@@ -40,9 +40,8 @@ curl http://127.0.0.1:8000/api/health
 curl --get http://127.0.0.1:8000/api/vacancies/search \
   --data-urlencode 'text=Python FastAPI' \
   --data-urlencode 'area=1' \
-  --data-urlencode 'experience=between1And3' \
-  --data-urlencode 'page=0' \
-  --data-urlencode 'hours=24'
+  --data-urlencode 'experience=between1And3'
+curl http://127.0.0.1:8000/api/vacancies/136199617
 ```
 
 ## API
@@ -60,14 +59,17 @@ curl --get http://127.0.0.1:8000/api/vacancies/search \
 | `text` | да | Строка поиска, от 1 до 512 символов |
 | `area` | нет | Числовой ID региона hh.ru |
 | `experience` | нет | `noExperience`, `between1And3`, `between3And6` или `moreThan6` |
-| `page` | нет | Номер страницы от `0` до `100`, по умолчанию `0` |
-| `hours` | нет | Возраст публикации от `1` до `720` часов, по умолчанию `24` |
+
+Сервис сам запрашивает страницы в порядке времени публикации, пока не достигнет границы последних 24 часов. Внутренний предел — 10 страниц, то есть до 500 исходных вакансий.
 
 Пример сокращённого ответа:
 
 ```json
 {
   "count": 1,
+  "pages_fetched": 2,
+  "truncated": false,
+  "cutoff": "2026-08-24T14:00:00Z",
   "vacancies": [
     {
       "id": "136199617",
@@ -104,7 +106,17 @@ curl --get http://127.0.0.1:8000/api/vacancies/search \
 }
 ```
 
-Фильтр `hours` использует `publicationTime["$"]`. Дубли удаляются по `vacancyId` с сохранением порядка hh.ru.
+Cutoff вычисляется один раз как `now - 24h` и сравнивается с `publicationTime["$"]`. Дубли удаляются по `vacancyId` с сохранением порядка hh.ru. Старые рекламные вставки `@isAdv` фильтруются, но не вызывают преждевременную остановку пагинации. `truncated=true` означает, что внутренний предел достигнут раньше cutoff или конца выдачи.
+
+### `GET /api/vacancies/{vacancy_id}`
+
+Возвращает полную карточку из `vacancyView`: основную информацию, полное HTML-описание, срок публикации, ключевые навыки, адрес и параметры формата работы.
+
+```bash
+curl http://127.0.0.1:8000/api/vacancies/136199617
+```
+
+HTML в поле `description` возвращается без исполнения и преобразования. При отображении его следует обрабатывать как недоверенные данные.
 
 ## Ошибки upstream
 
@@ -114,6 +126,7 @@ curl --get http://127.0.0.1:8000/api/vacancies/search \
 - `504 upstream_timeout` — превышен timeout;
 - `502 upstream_structure_changed` — отсутствует template, JSON повреждён или SSR-схема изменилась;
 - `502 upstream_http_error` — другая сетевая или HTTP-ошибка hh.ru.
+- `404 vacancy_not_found` — карточка вакансии не найдена.
 
 Невалидные query-параметры возвращают стандартный ответ FastAPI `422`.
 
@@ -142,8 +155,8 @@ Vercel использует `api/index.py`, `pyproject.toml`, `uv.lock` и `verc
 curl https://YOUR_PROJECT.vercel.app/api/health
 curl --get https://YOUR_PROJECT.vercel.app/api/vacancies/search \
   --data-urlencode 'text=Python' \
-  --data-urlencode 'area=1' \
-  --data-urlencode 'hours=24'
+  --data-urlencode 'area=1'
+curl https://YOUR_PROJECT.vercel.app/api/vacancies/136199617
 ```
 
 SSR-схема hh.ru не является публичным контрактом. Если hh.ru изменит HTML или JSON, endpoint вернёт `upstream_structure_changed`, а parser потребуется обновить по новому фактическому образцу.
