@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 import pytest
 
 from hh_relay.models import Experience, UpstreamSearchResult
-from hh_relay.service import MAX_SEARCH_PAGES, VacancyService
+from hh_relay.service import MAX_SEARCH_PAGES, MAX_SEARCH_RESULTS, VacancyService
 
 NOW = datetime(2026, 8, 25, 14, tzinfo=UTC)
 
@@ -148,3 +148,49 @@ async def test_old_ad_does_not_stop_pagination() -> None:
 
     assert client.calls == [0, 1]
     assert [vacancy.id for vacancy in result.vacancies] == ["1"]
+
+
+@pytest.mark.asyncio
+async def test_search_limits_result_for_action_payload() -> None:
+    client = FakeClient(
+        [
+            make_page(
+                [
+                    (vacancy_id, "2026-08-25T13:00:00+00:00")
+                    for vacancy_id in range(1, MAX_SEARCH_RESULTS + 2)
+                ],
+                has_next=False,
+            )
+        ]
+    )
+
+    result = await VacancyService(client).search(
+        text="Python",
+        area=None,
+        experience=None,
+        now=NOW,
+    )
+
+    assert result.count == MAX_SEARCH_RESULTS
+    assert result.truncated is True
+
+
+@pytest.mark.asyncio
+async def test_null_paging_is_natural_single_page_result() -> None:
+    page = make_page(
+        [(1, "2026-08-25T13:00:00+00:00")],
+        has_next=False,
+    )
+    page.paging = None
+    client = FakeClient([page])
+
+    result = await VacancyService(client).search(
+        text="Python",
+        area=None,
+        experience=None,
+        now=NOW,
+    )
+
+    assert result.count == 1
+    assert result.pages_fetched == 1
+    assert result.truncated is False

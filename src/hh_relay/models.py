@@ -179,7 +179,7 @@ class UpstreamSearchResult(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     vacancies: list[UpstreamVacancy]
-    paging: "UpstreamPaging"
+    paging: "UpstreamPaging | None" = None
 
 
 class UpstreamPagingNext(BaseModel):

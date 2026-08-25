@@ -7,6 +7,7 @@ from hh_relay.parser import normalize_vacancy, normalize_vacancy_detail
 
 SEARCH_WINDOW: Final = timedelta(hours=24)
 MAX_SEARCH_PAGES: Final = 10
+MAX_SEARCH_RESULTS: Final = 50
 
 
 class VacancyService:
@@ -29,6 +30,7 @@ class VacancyService:
         reached_cutoff = False
         has_next_page = False
         reached_end = False
+        result_overflow = False
 
         for page_number in range(MAX_SEARCH_PAGES):
             page = await self._client.search_page(
@@ -38,7 +40,7 @@ class VacancyService:
                 page=page_number,
             )
             pages_fetched += 1
-            has_next_page = not page.paging.next.disabled
+            has_next_page = page.paging is not None and not page.paging.next.disabled
             normalized = [normalize_vacancy(item) for item in page.vacancies]
 
             for upstream_vacancy, vacancy in zip(
@@ -54,13 +56,16 @@ class VacancyService:
                 if vacancy.id in seen_ids:
                     continue
                 seen_ids.add(vacancy.id)
+                if len(vacancies) == MAX_SEARCH_RESULTS:
+                    result_overflow = True
+                    break
                 vacancies.append(vacancy)
 
             reached_end = not normalized or not has_next_page
-            if reached_end or reached_cutoff:
+            if result_overflow or reached_end or reached_cutoff:
                 break
 
-        truncated = (
+        pages_truncated = (
             pages_fetched == MAX_SEARCH_PAGES
             and has_next_page
             and not reached_cutoff
@@ -70,7 +75,7 @@ class VacancyService:
             count=len(vacancies),
             vacancies=vacancies,
             pages_fetched=pages_fetched,
-            truncated=truncated,
+            truncated=result_overflow or pages_truncated,
             cutoff=cutoff,
         )
 
