@@ -57,7 +57,7 @@ class Snippet(BaseModel):
     description: str | None = None
 
 
-class Vacancy(BaseModel):
+class VacancySummary(BaseModel):
     id: str
     name: str
     url: HttpUrl
@@ -67,12 +67,15 @@ class Vacancy(BaseModel):
     experience: str | None = None
     published_at: datetime
     creation_time: datetime | None = None
+
+
+class Vacancy(VacancySummary):
     snippet: Snippet | None = None
 
 
 class SearchResponse(BaseModel):
     count: int
-    vacancies: list[Vacancy]
+    vacancies: list[VacancySummary]
     pages_fetched: int
     truncated: bool
     cutoff: datetime

@@ -59,6 +59,7 @@ def test_search_returns_normalized_response(client: TestClient) -> None:
     assert body["cutoff"] == "2026-08-24T14:00:00Z"
     assert body["vacancies"][0]["id"] == "101"
     assert body["vacancies"][0]["salary"]["from"] == 200000
+    assert "snippet" not in body["vacancies"][0]
 
 
 def test_search_validates_query(client: TestClient) -> None:

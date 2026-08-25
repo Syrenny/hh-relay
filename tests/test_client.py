@@ -83,3 +83,26 @@ async def test_get_vacancy_maps_not_found() -> None:
     async with httpx.AsyncClient(transport=transport) as http:
         with pytest.raises(VacancyNotFoundError):
             await HHClient(http).get_vacancy(999)
+
+
+@pytest.mark.asyncio
+async def test_search_retries_transient_forbidden() -> None:
+    attempts = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            return httpx.Response(403)
+        return httpx.Response(200, text=FIXTURE_PATH.read_text())
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+        result = await HHClient(http).search_page(
+            text="Python",
+            area=None,
+            experience=None,
+            page=0,
+        )
+
+    assert attempts == 2
+    assert len(result.vacancies) == 3

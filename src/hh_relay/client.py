@@ -1,3 +1,4 @@
+import asyncio
 from typing import Final
 
 import httpx
@@ -16,6 +17,8 @@ from hh_relay.models import (
 from hh_relay.parser import extract_search_result, extract_vacancy_detail
 
 HH_SEARCH_URL: Final = "https://hh.ru/search/vacancy"
+MAX_ATTEMPTS: Final = 2
+RETRY_DELAY_SECONDS: Final = 0.2
 DEFAULT_HEADERS: Final = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "ru-RU,ru;q=0.9,en;q=0.8",
@@ -67,12 +70,29 @@ class HHClient:
         params: dict[str, str | int] | None = None,
         vacancy_not_found: bool = False,
     ) -> httpx.Response:
-        try:
-            response = await self._http_client.get(url, params=params)
-        except httpx.TimeoutException as error:
-            raise UpstreamTimeoutError from error
-        except httpx.HTTPError as error:
-            raise UpstreamHTTPError from error
+        for attempt in range(MAX_ATTEMPTS):
+            try:
+                response = await self._http_client.get(url, params=params)
+            except httpx.TimeoutException as error:
+                if attempt + 1 == MAX_ATTEMPTS:
+                    raise UpstreamTimeoutError from error
+                await asyncio.sleep(RETRY_DELAY_SECONDS)
+                continue
+            except httpx.HTTPError as error:
+                if attempt + 1 == MAX_ATTEMPTS:
+                    raise UpstreamHTTPError from error
+                await asyncio.sleep(RETRY_DELAY_SECONDS)
+                continue
+
+            if (
+                _is_retryable_status(response.status_code)
+                and attempt + 1 < MAX_ATTEMPTS
+            ):
+                await asyncio.sleep(RETRY_DELAY_SECONDS)
+                continue
+            break
+        else:  # pragma: no cover
+            raise UpstreamHTTPError
 
         if response.status_code == httpx.codes.NOT_FOUND and vacancy_not_found:
             raise VacancyNotFoundError
@@ -81,6 +101,17 @@ class HHClient:
         if response.is_error:
             raise UpstreamHTTPError
         return response
+
+
+def _is_retryable_status(status_code: int) -> bool:
+    return (
+        status_code
+        in {
+            httpx.codes.FORBIDDEN,
+            httpx.codes.TOO_MANY_REQUESTS,
+        }
+        or status_code >= httpx.codes.INTERNAL_SERVER_ERROR
+    )
 
 
 def create_http_client() -> httpx.AsyncClient:
