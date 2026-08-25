@@ -1,4 +1,5 @@
 import asyncio
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -105,3 +106,10 @@ def test_openapi_exposes_only_public_search_parameters() -> None:
         schema["paths"]["/api/vacancies/{vacancy_id}"]["get"]["operationId"]
         == "getVacancy"
     )
+
+
+def test_action_openapi_has_no_any_of() -> None:
+    serialized_schema = json.dumps(app.openapi())
+
+    assert '"anyOf"' not in serialized_schema
+    assert '"$defs"' not in serialized_schema

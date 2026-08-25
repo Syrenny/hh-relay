@@ -6,6 +6,7 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, Path, Query, Request
 from fastapi.responses import JSONResponse
 
+from hh_relay.action_schema import build_action_schema
 from hh_relay.client import HHClient, create_http_client
 from hh_relay.errors import RelayError
 from hh_relay.models import (
@@ -113,3 +114,6 @@ async def get_vacancy(
     vacancy_id: Annotated[int, Path(ge=1)],
 ) -> VacancyDetail:
     return await VacancyService(client).get_vacancy(vacancy_id)
+
+
+app.openapi = build_action_schema

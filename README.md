@@ -33,6 +33,8 @@ https://hh-relay.vercel.app/openapi.json
 
 Аутентификация для Action не требуется.
 
+Endpoint отдаёт отдельную упрощённую OpenAPI 3.1.0 схему для Actions: без FastAPI/Pydantic `anyOf`, `$defs` и внутренних validation-моделей. В ней описаны только `healthCheck`, `searchVacancies` и `getVacancy`.
+
 Проверить приложение:
 
 ```bash
