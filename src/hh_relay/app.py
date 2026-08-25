@@ -27,8 +27,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title="hh.ru Vacancy Relay",
+    description=(
+        "Поиск вакансий на hh.ru через SSR-страницу без использования api.hh.ru."
+    ),
     version="0.1.0",
     lifespan=lifespan,
+    servers=[{"url": "https://hh-relay.vercel.app"}],
 )
 
 
@@ -55,13 +59,23 @@ async def relay_error_handler(_request: Request, error: RelayError) -> JSONRespo
     )
 
 
-@app.get("/api/health")
+@app.get(
+    "/api/health",
+    operation_id="healthCheck",
+    summary="Проверить доступность сервиса",
+)
 async def health() -> HealthResponse:
     return HealthResponse(status="ok")
 
 
 @app.get(
     "/api/vacancies/search",
+    operation_id="searchVacancies",
+    summary="Найти свежие вакансии на hh.ru",
+    description=(
+        "Возвращает нормализованные вакансии, опубликованные за последние N часов, "
+        "без дублей по ID."
+    ),
     response_model_by_alias=True,
     responses={
         502: {"model": ErrorResponse},

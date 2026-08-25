@@ -12,11 +12,32 @@ class Experience(StrEnum):
 
 
 class SearchQuery(BaseModel):
-    text: str = Field(min_length=1, max_length=512)
-    area: int | None = Field(default=None, ge=1)
-    experience: Experience | None = None
-    page: int = Field(default=0, ge=0, le=100)
-    hours: int = Field(default=24, ge=1, le=24 * 30)
+    text: str = Field(
+        min_length=1,
+        max_length=512,
+        description="Поисковый запрос, например Python FastAPI.",
+    )
+    area: int | None = Field(
+        default=None,
+        ge=1,
+        description="Числовой ID региона hh.ru, например 1 для Москвы.",
+    )
+    experience: Experience | None = Field(
+        default=None,
+        description="Требуемый опыт работы в формате hh.ru.",
+    )
+    page: int = Field(
+        default=0,
+        ge=0,
+        le=100,
+        description="Номер страницы; первая страница имеет номер 0.",
+    )
+    hours: int = Field(
+        default=24,
+        ge=1,
+        le=24 * 30,
+        description="Оставить вакансии за последние N часов.",
+    )
 
 
 class Employer(BaseModel):

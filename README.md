@@ -25,6 +25,14 @@ uv run uvicorn hh_relay.app:app --reload
 
 Документация OpenAPI будет доступна по адресу `http://127.0.0.1:8000/docs`, а схема для Custom GPT Action — по адресу `http://127.0.0.1:8000/openapi.json`.
 
+В опубликованный Custom GPT Action схему можно импортировать напрямую:
+
+```text
+https://hh-relay.vercel.app/openapi.json
+```
+
+Аутентификация для Action не требуется.
+
 Проверить приложение:
 
 ```bash
