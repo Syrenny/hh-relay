@@ -174,7 +174,7 @@ curl https://hh-relay.vercel.app/mcp \
 curl --silent --show-error https://YOUR_PROJECT.vercel.app/api/proxy-health | jq
 ```
 
-Приложение проверяет схему `vless`, REALITY и TCP, затем самостоятельно создаёт приватный конфигурационный файл `sing-box` в `/tmp` с правами `0600`. Поддерживаются стандартные query-параметры VLESS URL: `security`, `type`, `sni`, `fp`, `pbk`, `sid` и необязательный `flow`.
+Приложение проверяет схему `vless`, REALITY и прямой TCP-транспорт (`type=tcp` или `type=raw`), затем самостоятельно создаёт приватный конфигурационный файл `sing-box` в `/tmp` с правами `0600`. Поддерживаются стандартные query-параметры VLESS URL: `security`, `type`, `sni`, `fp`, `pbk`, `sid` и необязательный `flow`.
 
 Успешный результат содержит `status="ok"`, `http_status=200` и `initial_state_found=true`. Endpoint не принимает URL или параметры назначения и не возвращает HTML, cookies либо proxy-конфигурацию.
 

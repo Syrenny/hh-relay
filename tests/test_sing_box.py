@@ -17,7 +17,7 @@ from hh_relay.sing_box import (
 
 VLESS_URL = (
     "vless://00000000-0000-4000-8000-000000000000@proxy.example.com:443"
-    "?security=reality&type=tcp&sni=example.com&fp=chrome"
+    "?security=reality&type=raw&sni=example.com&fp=chrome"
     "&pbk=public-key&sid=0123456789abcdef&flow=xtls-rprx-vision#Moscow"
 )
 
@@ -135,3 +135,8 @@ def test_build_config_from_vless_url() -> None:
     tls = outbound["tls"]  # type: ignore[index]
     assert tls["server_name"] == "example.com"  # type: ignore[index]
     assert tls["reality"]["public_key"] == "public-key"  # type: ignore[index]
+
+
+@pytest.mark.parametrize("transport_type", ["tcp", "raw"])
+def test_build_config_accepts_direct_tcp_transport(transport_type: str) -> None:
+    build_sing_box_config(VLESS_URL.replace("type=raw", f"type={transport_type}"))

@@ -194,7 +194,7 @@ def build_sing_box_config(
     query = parse_qs(parsed.query, keep_blank_values=True)
     if _query_value(query, "security") != "reality":
         raise ValueError(PROXY_CONFIG_INVALID)
-    if _query_value(query, "type", default="tcp") != "tcp":
+    if _query_value(query, "type", default="tcp") not in {"tcp", "raw"}:
         raise ValueError(PROXY_CONFIG_INVALID)
 
     outbound: dict[str, object] = {
