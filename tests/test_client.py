@@ -63,18 +63,25 @@ async def test_search_maps_upstream_statuses(
 
 
 @pytest.mark.asyncio
-async def test_search_maps_timeout() -> None:
+async def test_search_maps_timeout(caplog: pytest.LogCaptureFixture) -> None:
     def timeout(_request: httpx.Request) -> httpx.Response:
         raise httpx.ReadTimeout("timeout")
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(timeout)) as http:
         with pytest.raises(UpstreamTimeoutError):
             await HHClient(http).search_page(
-                text="Python",
+                text="secret search text",
                 area=None,
                 experience=None,
                 page=0,
             )
+
+    assert caplog.text.count("hh_request_timeout") == 2
+    assert "url=https://hh.ru/search/vacancy" in caplog.text
+    assert "attempt=1/2" in caplog.text
+    assert "attempt=2/2" in caplog.text
+    assert "timeout_type=ReadTimeout" in caplog.text
+    assert "secret search text" not in caplog.text
 
 
 @pytest.mark.asyncio

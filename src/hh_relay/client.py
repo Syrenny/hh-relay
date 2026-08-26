@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from typing import Final
 
 import httpx
@@ -19,6 +20,7 @@ from hh_relay.parser import extract_search_result, extract_vacancy_detail
 HH_SEARCH_URL: Final = "https://hh.ru/search/vacancy"
 MAX_ATTEMPTS: Final = 2
 RETRY_DELAY_SECONDS: Final = 0.2
+logger = logging.getLogger(__name__)
 DEFAULT_HEADERS: Final = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "ru-RU,ru;q=0.9,en;q=0.8",
@@ -74,11 +76,25 @@ class HHClient:
             try:
                 response = await self._http_client.get(url, params=params)
             except httpx.TimeoutException as error:
+                logger.warning(
+                    "hh_request_timeout url=%s attempt=%d/%d timeout_type=%s",
+                    _safe_error_url(error, fallback=url),
+                    attempt + 1,
+                    MAX_ATTEMPTS,
+                    type(error).__name__,
+                )
                 if attempt + 1 == MAX_ATTEMPTS:
                     raise UpstreamTimeoutError from error
                 await asyncio.sleep(RETRY_DELAY_SECONDS)
                 continue
             except httpx.HTTPError as error:
+                logger.warning(
+                    "hh_request_error url=%s attempt=%d/%d error_type=%s",
+                    _safe_error_url(error, fallback=url),
+                    attempt + 1,
+                    MAX_ATTEMPTS,
+                    type(error).__name__,
+                )
                 if attempt + 1 == MAX_ATTEMPTS:
                     raise UpstreamHTTPError from error
                 await asyncio.sleep(RETRY_DELAY_SECONDS)
@@ -112,6 +128,14 @@ def _is_retryable_status(status_code: int) -> bool:
         }
         or status_code >= httpx.codes.INTERNAL_SERVER_ERROR
     )
+
+
+def _safe_error_url(error: httpx.HTTPError, *, fallback: str) -> str:
+    try:
+        request_url = error.request.url
+    except RuntimeError:
+        request_url = httpx.URL(fallback)
+    return str(request_url.copy_with(query=None, fragment=None))
 
 
 def create_http_client() -> httpx.AsyncClient:
