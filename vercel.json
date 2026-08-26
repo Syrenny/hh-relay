@@ -1,7 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "uv run python scripts/install_sing_box.py",
   "functions": {
     "api/index.py": {
+      "includeFiles": "vendor/sing-box",
       "maxDuration": 30
     }
   }

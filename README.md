@@ -163,6 +163,23 @@ curl https://hh-relay.vercel.app/mcp \
   --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"curl","version":"1"}}}'
 ```
 
+## Проверка sing-box в Vercel
+
+Экспериментальный endpoint `GET /api/proxy-health` проверяет доступ к SSR-странице hh.ru через один VLESS + REALITY узел. Основной поиск пока не использует этот маршрут.
+
+1. Создать в Vercel Environment Variables секрет `SINGBOX_VLESS_URL` и вставить в него полную ссылку выбранной локации вида `vless://...`. Настроить переменную для Production и нужных Preview environments. Ссылку не добавлять в Git и не публиковать в логах.
+2. Выполнить новый deployment и вызвать:
+
+```bash
+curl --silent --show-error https://YOUR_PROJECT.vercel.app/api/proxy-health | jq
+```
+
+Приложение проверяет схему `vless`, REALITY и TCP, затем самостоятельно создаёт приватный конфигурационный файл `sing-box` в `/tmp` с правами `0600`. Поддерживаются стандартные query-параметры VLESS URL: `security`, `type`, `sni`, `fp`, `pbk`, `sid` и необязательный `flow`.
+
+Успешный результат содержит `status="ok"`, `http_status=200` и `initial_state_found=true`. Endpoint не принимает URL или параметры назначения и не возвращает HTML, cookies либо proxy-конфигурацию.
+
+Vercel build запускает `scripts/install_sing_box.py`: он загружает официальный `sing-box 1.13.19` для Linux amd64 glibc через GitHub Releases API, проверяет закреплённый SHA-256 и включает бинарник в Function bundle. Сгенерированный `vendor/sing-box` игнорируется Git и не должен коммититься.
+
 ## Проверки
 
 ```bash
@@ -177,7 +194,7 @@ uv run pytest
 
 1. Импортировать GitHub-репозиторий в Vercel через **Add New → Project**.
 2. Оставить preset **FastAPI** и корневую директорию `./`.
-3. Не задавать Build Command, Output Directory и переменные окружения.
+3. Не задавать Build Command и Output Directory. Для proxy probe добавить секрет `SINGBOX_VLESS_URL`.
 4. Нажать **Deploy**.
 
 Vercel использует `api/index.py`, `pyproject.toml`, `uv.lock` и `vercel.json`. Push в `main` создаёт production deployment, а ветки и pull request — preview deployment.

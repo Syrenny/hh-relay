@@ -7,8 +7,9 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from hh_relay.app import app, get_hh_client, get_now
+from hh_relay.app import app, get_hh_client, get_now, get_sing_box_manager
 from hh_relay.client import HHClient
+from hh_relay.sing_box import SingBoxManager
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "search.html"
 DETAIL_FIXTURE_PATH = Path(__file__).parent / "fixtures" / "vacancy.html"
@@ -44,6 +45,28 @@ def test_health_does_not_call_upstream(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_proxy_health_reports_missing_config(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("SINGBOX_VLESS_URL", raising=False)
+    app.dependency_overrides[get_sing_box_manager] = lambda: SingBoxManager()
+
+    response = client.get("/api/proxy-health")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "error",
+        "sing_box": "error",
+        "http_status": None,
+        "final_hostname": None,
+        "elapsed_ms": None,
+        "response_bytes": None,
+        "initial_state_found": False,
+        "error_code": "proxy_not_configured",
+    }
 
 
 def test_search_returns_normalized_response(client: TestClient) -> None:

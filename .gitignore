@@ -209,6 +209,9 @@ tempCodeRunnerFile.py
 # PyPI configuration file
 .pypirc
 
+# Generated and checksum-verified during the Vercel build
+/vendor/sing-box
+
 # Marimo
 marimo/_static/
 marimo/_lsp/

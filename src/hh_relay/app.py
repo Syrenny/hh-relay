@@ -14,21 +14,28 @@ from hh_relay.models import (
     ErrorDetail,
     ErrorResponse,
     HealthResponse,
+    ProxyHealthResponse,
     SearchQuery,
     SearchResponse,
     VacancyDetail,
 )
 from hh_relay.service import VacancyService
+from hh_relay.sing_box import SingBoxManager, probe_hh_via_proxy
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    async with (
-        create_http_client() as http_client,
-        mcp_http_app.router.lifespan_context(mcp_http_app),
-    ):
-        app.state.hh_client = HHClient(http_client)
-        yield
+    sing_box_manager = SingBoxManager()
+    app.state.sing_box_manager = sing_box_manager
+    try:
+        async with (
+            create_http_client() as http_client,
+            mcp_http_app.router.lifespan_context(mcp_http_app),
+        ):
+            app.state.hh_client = HHClient(http_client)
+            yield
+    finally:
+        await sing_box_manager.close()
 
 
 app = FastAPI(
@@ -51,8 +58,13 @@ def get_now() -> datetime:
     return datetime.now(UTC)
 
 
+def get_sing_box_manager(request: Request) -> SingBoxManager:
+    return request.app.state.sing_box_manager
+
+
 HHClientDependency = Annotated[HHClient, Depends(get_hh_client)]
 NowDependency = Annotated[datetime, Depends(get_now)]
+SingBoxManagerDependency = Annotated[SingBoxManager, Depends(get_sing_box_manager)]
 
 
 @app.exception_handler(RelayError)
@@ -73,6 +85,15 @@ async def relay_error_handler(_request: Request, error: RelayError) -> JSONRespo
 )
 async def health() -> HealthResponse:
     return HealthResponse(status="ok")
+
+
+@app.get(
+    "/api/proxy-health",
+    summary="Проверить доступ к hh.ru через sing-box",
+    include_in_schema=False,
+)
+async def proxy_health(manager: SingBoxManagerDependency) -> ProxyHealthResponse:
+    return await probe_hh_via_proxy(manager)
 
 
 @app.get(

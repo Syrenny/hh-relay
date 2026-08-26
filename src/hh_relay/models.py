@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
@@ -100,6 +101,17 @@ class VacancyDetail(Vacancy):
 
 class HealthResponse(BaseModel):
     status: str
+
+
+class ProxyHealthResponse(BaseModel):
+    status: Literal["ok", "error"]
+    sing_box: Literal["running", "error"]
+    http_status: int | None = None
+    final_hostname: str | None = None
+    elapsed_ms: int | None = None
+    response_bytes: int | None = None
+    initial_state_found: bool = False
+    error_code: str | None = None
 
 
 class ErrorDetail(BaseModel):
