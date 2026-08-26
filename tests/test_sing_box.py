@@ -7,12 +7,14 @@ from typing import cast
 import httpx
 import pytest
 
+from hh_relay.errors import UpstreamProxyError
 from hh_relay.sing_box import (
     SingBoxError,
     SingBoxManager,
     SingBoxSettings,
     build_sing_box_config,
     probe_hh_via_proxy,
+    proxy_http_client,
 )
 
 VLESS_URL = (
@@ -96,6 +98,15 @@ async def test_manager_rejects_invalid_config() -> None:
 
     with pytest.raises(SingBoxError, match="proxy_config_invalid"):
         await manager.ensure_started()
+
+
+@pytest.mark.asyncio
+async def test_proxy_client_maps_configuration_error() -> None:
+    manager = SingBoxManager(vless_url="not-a-vless-url")
+
+    with pytest.raises(UpstreamProxyError):
+        async with proxy_http_client(manager):
+            pytest.fail("Invalid proxy config must not yield an HTTP client")
 
 
 @pytest.mark.asyncio

@@ -35,6 +35,15 @@ class UpstreamHTTPError(RelayError):
         )
 
 
+class UpstreamProxyError(RelayError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="upstream_proxy_unavailable",
+            message="Proxy connection to hh.ru is unavailable",
+            status_code=502,
+        )
+
+
 class UpstreamStructureError(RelayError):
     def __init__(self) -> None:
         super().__init__(

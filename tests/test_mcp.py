@@ -1,3 +1,5 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -57,10 +59,12 @@ def test_mcp_calls_search_tool_with_structured_output(
         lambda _request: httpx.Response(200, text=FIXTURE_PATH.read_text()),
     )
 
-    def create_mock_client() -> httpx.AsyncClient:
-        return httpx.AsyncClient(transport=transport)
+    @asynccontextmanager
+    async def create_mock_client() -> AsyncIterator[httpx.AsyncClient]:
+        async with httpx.AsyncClient(transport=transport) as client:
+            yield client
 
-    monkeypatch.setattr(mcp_server, "create_http_client", create_mock_client)
+    monkeypatch.setattr(mcp_server, "proxy_http_client", create_mock_client)
 
     called = rpc(
         mcp_client,

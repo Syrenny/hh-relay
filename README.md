@@ -122,7 +122,8 @@ HTML в поле `description` возвращается без исполнен�
 - `502 upstream_forbidden` — hh.ru ответил `403`;
 - `504 upstream_timeout` — превышен timeout;
 - `502 upstream_structure_changed` — отсутствует template, JSON повреждён или SSR-схема изменилась;
-- `502 upstream_http_error` — другая сетевая или HTTP-ошибка hh.ru.
+- `502 upstream_http_error` — другая сетевая или HTTP-ошибка hh.ru;
+- `502 upstream_proxy_unavailable` — `sing-box` не настроен, не запустился или не открыл локальный SOCKS5-порт;
 - `404 vacancy_not_found` — карточка вакансии не найдена.
 
 Невалидные query-параметры возвращают стандартный ответ FastAPI `422`.
@@ -165,7 +166,7 @@ curl https://hh-relay.vercel.app/mcp \
 
 ## Проверка sing-box в Vercel
 
-Экспериментальный endpoint `GET /api/proxy-health` проверяет доступ к SSR-странице hh.ru через один VLESS + REALITY узел. Основной поиск пока не использует этот маршрут.
+Endpoint `GET /api/proxy-health` проверяет доступ к SSR-странице hh.ru через один VLESS + REALITY узел. REST-поиск, полные карточки и оба MCP-инструмента используют тот же SOCKS5-маршрут; прямой fallback не выполняется.
 
 1. Создать в Vercel Environment Variables секрет `SINGBOX_VLESS_URL` и вставить в него полную ссылку выбранной локации вида `vless://...`. Настроить переменную для Production и нужных Preview environments. Ссылку не добавлять в Git и не публиковать в логах.
 2. Выполнить новый deployment и вызвать:

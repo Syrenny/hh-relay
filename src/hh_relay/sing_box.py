@@ -5,16 +5,21 @@ import json
 import os
 import tempfile
 import time
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final
+from typing import TYPE_CHECKING, Final
 from urllib.parse import parse_qs, unquote, urlsplit
 from uuid import UUID
 
 import httpx
 
-from hh_relay.client import DEFAULT_HEADERS, HH_SEARCH_URL
+from hh_relay.client import DEFAULT_HEADERS, HH_SEARCH_URL, create_http_client
+from hh_relay.errors import UpstreamProxyError
 from hh_relay.models import ProxyHealthResponse
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 SING_BOX_VLESS_URL_ENV: Final = "SINGBOX_VLESS_URL"
 SING_BOX_HOST: Final = "127.0.0.1"
@@ -170,6 +175,21 @@ class SingBoxManager:
         except TimeoutError:
             process.kill()
             await process.wait()
+
+
+shared_sing_box_manager = SingBoxManager()
+
+
+@asynccontextmanager
+async def proxy_http_client(
+    manager: SingBoxManager = shared_sing_box_manager,
+) -> AsyncIterator[httpx.AsyncClient]:
+    try:
+        await manager.ensure_started()
+    except SingBoxError as error:
+        raise UpstreamProxyError from error
+    async with create_http_client(proxy=manager.proxy_url) as client:
+        yield client
 
 
 def build_sing_box_config(

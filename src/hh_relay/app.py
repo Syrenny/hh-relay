@@ -7,7 +7,7 @@ from fastapi import Depends, FastAPI, Path, Query, Request
 from fastapi.responses import JSONResponse
 
 from hh_relay.action_schema import build_action_schema
-from hh_relay.client import HHClient, create_http_client
+from hh_relay.client import HHClient
 from hh_relay.errors import RelayError
 from hh_relay.mcp_server import mcp_http_app
 from hh_relay.models import (
@@ -20,22 +20,22 @@ from hh_relay.models import (
     VacancyDetail,
 )
 from hh_relay.service import VacancyService
-from hh_relay.sing_box import SingBoxManager, probe_hh_via_proxy
+from hh_relay.sing_box import (
+    SingBoxManager,
+    probe_hh_via_proxy,
+    proxy_http_client,
+    shared_sing_box_manager,
+)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    sing_box_manager = SingBoxManager()
-    app.state.sing_box_manager = sing_box_manager
+    app.state.sing_box_manager = shared_sing_box_manager
     try:
-        async with (
-            create_http_client() as http_client,
-            mcp_http_app.router.lifespan_context(mcp_http_app),
-        ):
-            app.state.hh_client = HHClient(http_client)
+        async with mcp_http_app.router.lifespan_context(mcp_http_app):
             yield
     finally:
-        await sing_box_manager.close()
+        await shared_sing_box_manager.close()
 
 
 app = FastAPI(
@@ -50,8 +50,10 @@ app = FastAPI(
 )
 
 
-def get_hh_client(request: Request) -> HHClient:
-    return request.app.state.hh_client
+async def get_hh_client(request: Request) -> AsyncIterator[HHClient]:
+    manager: SingBoxManager = request.app.state.sing_box_manager
+    async with proxy_http_client(manager) as http_client:
+        yield HHClient(http_client)
 
 
 def get_now() -> datetime:

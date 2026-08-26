@@ -138,12 +138,13 @@ def _safe_error_url(error: httpx.HTTPError, *, fallback: str) -> str:
     return str(request_url.copy_with(query=None, fragment=None))
 
 
-def create_http_client() -> httpx.AsyncClient:
+def create_http_client(*, proxy: str | None = None) -> httpx.AsyncClient:
     timeout = httpx.Timeout(15.0, connect=5.0)
     limits = httpx.Limits(max_connections=20, max_keepalive_connections=10)
     return httpx.AsyncClient(
         follow_redirects=True,
         headers=DEFAULT_HEADERS,
         limits=limits,
+        proxy=proxy,
         timeout=timeout,
     )
