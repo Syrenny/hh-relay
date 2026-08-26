@@ -3,7 +3,7 @@
   "buildCommand": "uv run python scripts/install_sing_box.py",
   "functions": {
     "api/index.py": {
-      "includeFiles": "vendor/sing-box",
+      "includeFiles": "src/**",
       "maxDuration": 30
     }
   }

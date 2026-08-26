@@ -23,7 +23,10 @@ SING_BOX_STARTUP_TIMEOUT: Final = 5.0
 TEMP_DIRECTORY: Final = Path(tempfile.gettempdir())
 SING_BOX_CONFIG_PATH: Final = TEMP_DIRECTORY / "hh-relay-sing-box.json"
 SING_BOX_BINARY_PATH: Final = Path(
-    os.getenv("SINGBOX_BINARY_PATH", str(Path.cwd() / "vendor" / "sing-box")),
+    os.getenv(
+        "SINGBOX_BINARY_PATH",
+        str(Path(__file__).resolve().parent / "vendor" / "sing-box"),
+    ),
 )
 INITIAL_STATE_MARKER: Final = b' id="HH-Lux-InitialState"'
 PROXY_NOT_CONFIGURED: Final = "proxy_not_configured"

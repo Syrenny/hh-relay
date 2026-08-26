@@ -18,7 +18,9 @@ EXPECTED_SHA256: Final = (
     "77e26226c111b8a269f559aec7999f6f5ae1961f25374b58b126d06405d4f516"
 )
 MEMBER_NAME: Final = f"sing-box-{VERSION}-linux-amd64-glibc/sing-box"
-TARGET_PATH: Final = Path(__file__).resolve().parents[1] / "vendor" / "sing-box"
+TARGET_PATH: Final = (
+    Path(__file__).resolve().parents[1] / "src" / "hh_relay" / "vendor" / "sing-box"
+)
 
 
 def main() -> None:

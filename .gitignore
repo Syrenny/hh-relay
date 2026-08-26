@@ -211,6 +211,7 @@ tempCodeRunnerFile.py
 
 # Generated and checksum-verified during the Vercel build
 /vendor/sing-box
+/src/hh_relay/vendor/sing-box
 
 # Marimo
 marimo/_static/

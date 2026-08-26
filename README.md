@@ -178,7 +178,7 @@ curl --silent --show-error https://YOUR_PROJECT.vercel.app/api/proxy-health | jq
 
 Успешный результат содержит `status="ok"`, `http_status=200` и `initial_state_found=true`. Endpoint не принимает URL или параметры назначения и не возвращает HTML, cookies либо proxy-конфигурацию.
 
-Vercel build запускает `scripts/install_sing_box.py`: он загружает официальный `sing-box 1.13.19` для Linux amd64 glibc через GitHub Releases API, проверяет закреплённый SHA-256 и включает бинарник в Function bundle. Сгенерированный `vendor/sing-box` игнорируется Git и не должен коммититься.
+Vercel build запускает `scripts/install_sing_box.py`: он загружает официальный `sing-box 1.13.19` для Linux amd64 glibc через GitHub Releases API, проверяет закреплённый SHA-256 и включает бинарник в Function bundle. Сгенерированный `src/hh_relay/vendor/sing-box` игнорируется Git и не должен коммититься.
 
 ## Проверки
 
