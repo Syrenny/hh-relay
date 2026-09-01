@@ -1,0 +1,29 @@
+{
+  "id": "101",
+  "name": "Python & FastAPI Developer",
+  "alternate_url": "https://hh.ru/vacancy/101",
+  "employer": {"id": "501", "name": "Example Employer"},
+  "area": {"id": "1", "name": "Москва"},
+  "salary_range": {
+    "from": 200000,
+    "to": 300000,
+    "currency": "RUR",
+    "gross": false,
+    "mode": {"id": "MONTH", "name": "За месяц"},
+    "frequency": {"id": "MONTHLY", "name": "Ежемесячно"}
+  },
+  "experience": {"id": "between3And6", "name": "От 3 до 6 лет"},
+  "published_at": "2026-08-25T13:00:00+00:00",
+  "description": "<p>Full &amp; detailed description</p>",
+  "expires_at": "2026-09-25T13:00:00+00:00",
+  "key_skills": [{"name": "Python"}, {"name": "FastAPI"}],
+  "address": {
+    "raw": "Москва, Тверская улица",
+    "city": "Москва",
+    "street": "Тверская улица"
+  },
+  "employment_form": {"id": "FULL", "name": "Полная занятость"},
+  "work_format": [{"id": "REMOTE", "name": "Удалённо"}],
+  "work_schedule_by_days": [{"id": "FIVE_ON_TWO_OFF", "name": "5/2"}],
+  "working_hours": [{"id": "HOURS_8", "name": "8 часов"}]
+}

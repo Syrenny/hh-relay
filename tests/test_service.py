@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from hh_relay.models import Experience, UpstreamSearchResult
+from hh_relay.models import Experience, HHSearchResponse
 from hh_relay.service import MAX_SEARCH_PAGES, MAX_SEARCH_RESULTS, VacancyService
 
 NOW = datetime(2026, 8, 25, 14, tzinfo=UTC)
@@ -12,41 +12,50 @@ def make_page(
     publications: list[tuple[int, str] | tuple[int, str, bool]],
     *,
     has_next: bool,
-) -> UpstreamSearchResult:
-    return UpstreamSearchResult.model_validate(
+) -> HHSearchResponse:
+    return HHSearchResponse.model_validate(
         {
-            "vacancies": [
+            "items": [
                 {
-                    "vacancyId": vacancy_id,
+                    "id": str(vacancy_id),
                     "name": f"Vacancy {vacancy_id}",
-                    "links": {"desktop": f"https://hh.ru/vacancy/{vacancy_id}"},
-                    "publicationTime": {"$": item[1]},
-                    "@isAdv": item[2] if len(item) == 3 else False,
+                    "alternate_url": f"https://hh.ru/vacancy/{vacancy_id}",
+                    "published_at": item[1],
                 }
                 for item in publications
                 for vacancy_id in [item[0]]
             ],
-            "paging": {"next": {"page": 1, "disabled": not has_next}},
+            "page": 0,
+            "pages": 2 if has_next else 1,
+            "per_page": 100,
+            "found": len(publications),
         }
     )
 
 
 class FakeClient:
-    def __init__(self, pages: list[UpstreamSearchResult]) -> None:
+    def __init__(self, pages: list[HHSearchResponse]) -> None:
         self.pages = pages
         self.calls: list[int] = []
 
-    async def search_page(
+    async def search_page(  # noqa: PLR0913
         self,
         *,
         text: str,
         area: int | None,
         experience: Experience | None,
         page: int,
-    ) -> UpstreamSearchResult:
-        del text, area, experience
+        per_page: int,
+        date_from: datetime,
+        date_to: datetime,
+    ) -> HHSearchResponse:
+        del text, area, experience, per_page, date_from, date_to
         self.calls.append(page)
-        return self.pages[page]
+        result = self.pages[page]
+        result.page = page
+        if result.pages > 1:
+            result.pages = len(self.pages)
+        return result
 
 
 @pytest.mark.asyncio
@@ -92,7 +101,7 @@ async def test_search_marks_result_truncated_at_internal_limit() -> None:
                 [(page + 1, "2026-08-25T13:00:00+00:00")],
                 has_next=True,
             )
-            for page in range(MAX_SEARCH_PAGES)
+            for page in range(MAX_SEARCH_PAGES + 1)
         ]
     )
 
@@ -122,32 +131,6 @@ async def test_empty_page_is_natural_end_not_truncation() -> None:
 
     assert result.pages_fetched == 1
     assert result.truncated is False
-
-
-@pytest.mark.asyncio
-async def test_old_ad_does_not_stop_pagination() -> None:
-    client = FakeClient(
-        [
-            make_page(
-                [(99, "2026-08-20T13:00:00+00:00", True)],
-                has_next=True,
-            ),
-            make_page(
-                [(1, "2026-08-25T13:00:00+00:00")],
-                has_next=False,
-            ),
-        ]
-    )
-
-    result = await VacancyService(client).search(
-        text="Python",
-        area=None,
-        experience=None,
-        now=NOW,
-    )
-
-    assert client.calls == [0, 1]
-    assert [vacancy.id for vacancy in result.vacancies] == ["1"]
 
 
 @pytest.mark.asyncio
@@ -181,7 +164,6 @@ async def test_null_paging_is_natural_single_page_result() -> None:
         [(1, "2026-08-25T13:00:00+00:00")],
         has_next=False,
     )
-    page.paging = None
     client = FakeClient([page])
 
     result = await VacancyService(client).search(

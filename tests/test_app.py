@@ -7,27 +7,35 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from hh_relay.app import app, get_hh_client, get_now, get_sing_box_manager
-from hh_relay.client import HHClient
-from hh_relay.sing_box import SingBoxManager
+from hh_relay.app import app, get_hh_client, get_now
+from hh_relay.client import ApplicationTokenManager, HHClient
 
-FIXTURE_PATH = Path(__file__).parent / "fixtures" / "search.html"
-DETAIL_FIXTURE_PATH = Path(__file__).parent / "fixtures" / "vacancy.html"
+FIXTURE_PATH = Path(__file__).parent / "fixtures" / "search.json"
+DETAIL_FIXTURE_PATH = Path(__file__).parent / "fixtures" / "vacancy.json"
 
 
 @pytest.fixture
 def client(asgi_client: TestClient) -> TestClient:
     def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/token":
+            return httpx.Response(
+                200,
+                json={"access_token": "token", "token_type": "bearer"},
+            )
         fixture = (
             DETAIL_FIXTURE_PATH
-            if request.url.path.startswith("/vacancy/")
+            if request.url.path.startswith("/vacancies/")
             else FIXTURE_PATH
         )
-        return httpx.Response(200, text=fixture.read_text())
+        return httpx.Response(200, json=json.loads(fixture.read_text()))
 
     transport = httpx.MockTransport(handler)
     http_client = httpx.AsyncClient(transport=transport)
-    app.dependency_overrides[get_hh_client] = lambda: HHClient(http_client)
+    manager = ApplicationTokenManager(
+        client_id="client",
+        client_secret="secret",  # noqa: S106
+    )
+    app.dependency_overrides[get_hh_client] = lambda: HHClient(http_client, manager)
     app.dependency_overrides[get_now] = lambda: datetime(
         2026,
         8,
@@ -45,28 +53,6 @@ def test_health_does_not_call_upstream(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
-
-
-def test_proxy_health_reports_missing_config(
-    client: TestClient,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.delenv("SINGBOX_VLESS_URL", raising=False)
-    app.dependency_overrides[get_sing_box_manager] = lambda: SingBoxManager()
-
-    response = client.get("/api/proxy-health")
-
-    assert response.status_code == 200
-    assert response.json() == {
-        "status": "error",
-        "sing_box": "error",
-        "http_status": None,
-        "final_hostname": None,
-        "elapsed_ms": None,
-        "response_bytes": None,
-        "initial_state_found": False,
-        "error_code": "proxy_not_configured",
-    }
 
 
 def test_search_returns_normalized_response(client: TestClient) -> None:
@@ -103,10 +89,22 @@ def test_get_vacancy_returns_full_description(client: TestClient) -> None:
 
 
 def test_get_vacancy_returns_controlled_not_found(client: TestClient) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/token":
+            return httpx.Response(
+                200,
+                json={"access_token": "token", "token_type": "bearer"},
+            )
+        return httpx.Response(404)
+
     http_client = httpx.AsyncClient(
-        transport=httpx.MockTransport(lambda _request: httpx.Response(404)),
+        transport=httpx.MockTransport(handler),
     )
-    app.dependency_overrides[get_hh_client] = lambda: HHClient(http_client)
+    manager = ApplicationTokenManager(
+        client_id="client",
+        client_secret="secret",  # noqa: S106
+    )
+    app.dependency_overrides[get_hh_client] = lambda: HHClient(http_client, manager)
 
     response = client.get("/api/vacancies/999")
 

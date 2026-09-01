@@ -3,11 +3,12 @@ from typing import Final
 
 from hh_relay.client import HHClient
 from hh_relay.models import Experience, SearchResponse, Vacancy, VacancyDetail
-from hh_relay.parser import normalize_vacancy, normalize_vacancy_detail
+from hh_relay.normalization import normalize_vacancy, normalize_vacancy_detail
 
 SEARCH_WINDOW: Final = timedelta(hours=24)
 MAX_SEARCH_PAGES: Final = 10
 MAX_SEARCH_RESULTS: Final = 50
+SEARCH_PAGE_SIZE: Final = 100
 
 
 class VacancyService:
@@ -27,7 +28,6 @@ class VacancyService:
         vacancies: list[Vacancy] = []
         seen_ids: set[str] = set()
         pages_fetched = 0
-        reached_cutoff = False
         has_next_page = False
         reached_end = False
         result_overflow = False
@@ -38,20 +38,17 @@ class VacancyService:
                 area=area,
                 experience=experience,
                 page=page_number,
+                per_page=SEARCH_PAGE_SIZE,
+                date_from=cutoff,
+                date_to=current_time,
             )
             pages_fetched += 1
-            has_next_page = page.paging is not None and not page.paging.next.disabled
-            normalized = [normalize_vacancy(item) for item in page.vacancies]
+            has_next_page = page.page + 1 < page.pages
+            normalized = [normalize_vacancy(item) for item in page.items]
 
-            for upstream_vacancy, vacancy in zip(
-                page.vacancies,
-                normalized,
-                strict=True,
-            ):
+            for vacancy in normalized:
                 published_at = _aware(vacancy.published_at)
                 if published_at < cutoff:
-                    if not upstream_vacancy.is_adv:
-                        reached_cutoff = True
                     continue
                 if vacancy.id in seen_ids:
                     continue
@@ -62,20 +59,17 @@ class VacancyService:
                 vacancies.append(vacancy)
 
             reached_end = not normalized or not has_next_page
-            if result_overflow or reached_end or reached_cutoff:
+            if result_overflow or reached_end:
                 break
 
         pages_truncated = (
-            pages_fetched == MAX_SEARCH_PAGES
-            and has_next_page
-            and not reached_cutoff
-            and not reached_end
+            pages_fetched == MAX_SEARCH_PAGES and has_next_page and not reached_end
         )
         return SearchResponse(
             count=len(vacancies),
             vacancies=vacancies,
             pages_fetched=pages_fetched,
-            truncated=result_overflow or pages_truncated,
+            truncated=result_overflow or pages_truncated or has_next_page,
             cutoff=cutoff,
         )
 

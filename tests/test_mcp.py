@@ -1,3 +1,4 @@
+import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -9,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from hh_relay import mcp_server
 
-FIXTURE_PATH = Path(__file__).parent / "fixtures" / "search.html"
+FIXTURE_PATH = Path(__file__).parent / "fixtures" / "search.json"
 MCP_HEADERS = {
     "Accept": "application/json, text/event-stream",
     "Content-Type": "application/json",
@@ -55,16 +56,27 @@ def test_mcp_calls_search_tool_with_structured_output(
     mcp_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    transport = httpx.MockTransport(
-        lambda _request: httpx.Response(200, text=FIXTURE_PATH.read_text()),
-    )
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/token":
+            return httpx.Response(
+                200,
+                json={"access_token": "token", "token_type": "bearer"},
+            )
+        payload = json.loads(FIXTURE_PATH.read_text())
+        payload["items"] = payload["items"][:1]
+        payload["items"][0]["published_at"] = request.url.params["date_to"]
+        return httpx.Response(200, json=payload)
+
+    transport = httpx.MockTransport(handler)
 
     @asynccontextmanager
     async def create_mock_client() -> AsyncIterator[httpx.AsyncClient]:
         async with httpx.AsyncClient(transport=transport) as client:
             yield client
 
-    monkeypatch.setattr(mcp_server, "proxy_http_client", create_mock_client)
+    monkeypatch.setenv("HH_CLIENT_ID", "client")
+    monkeypatch.setenv("HH_CLIENT_SECRET", "secret")
+    monkeypatch.setattr(mcp_server, "create_http_client", create_mock_client)
 
     called = rpc(
         mcp_client,

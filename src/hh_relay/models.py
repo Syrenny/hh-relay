@@ -1,6 +1,5 @@
 from datetime import datetime
 from enum import StrEnum
-from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
@@ -103,17 +102,6 @@ class HealthResponse(BaseModel):
     status: str
 
 
-class ProxyHealthResponse(BaseModel):
-    status: Literal["ok", "error"]
-    sing_box: Literal["running", "error"]
-    http_status: int | None = None
-    final_hostname: str | None = None
-    elapsed_ms: int | None = None
-    response_bytes: int | None = None
-    initial_state_found: bool = False
-    error_code: str | None = None
-
-
 class ErrorDetail(BaseModel):
     code: str
     message: str
@@ -123,137 +111,93 @@ class ErrorResponse(BaseModel):
     error: ErrorDetail
 
 
-class UpstreamLinks(BaseModel):
+class HHReference(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    desktop: str | None = None
-    mobile: str | None = None
-
-
-class UpstreamCompany(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    id: int | str | None = None
-    name: str | None = None
-    visible_name: str | None = Field(default=None, alias="visibleName")
-
-
-class UpstreamArea(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    id: int | str | None = Field(default=None, alias="@id")
+    id: str | None = None
     name: str
 
 
-class UpstreamCompensation(BaseModel):
+class HHEmployer(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    id: str | None = None
+    name: str
+
+
+class HHSalary(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     from_: int | None = Field(default=None, alias="from")
     to: int | None = None
-    currency_code: str | None = Field(default=None, alias="currencyCode")
+    currency: str | None = None
     gross: bool | None = None
-    mode: str | None = None
-    frequency: str | None = None
+    mode: HHReference | None = None
+    frequency: HHReference | None = None
 
 
-class UpstreamPublicationTime(BaseModel):
+class HHSnippet(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    value: datetime = Field(alias="$")
-    timestamp: int | None = Field(default=None, alias="@timestamp")
+    requirement: str | None = None
+    responsibility: str | None = None
 
 
-class UpstreamSnippet(BaseModel):
+class HHVacancy(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    req: str | None = None
-    resp: str | None = None
-    cond: str | None = None
-    skill: str | None = None
-    desc: str | None = None
-
-
-class UpstreamVacancy(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    vacancy_id: int | str = Field(alias="vacancyId")
-    is_adv: bool = Field(default=False, alias="@isAdv")
+    id: str
     name: str
-    links: UpstreamLinks
-    view_url: str | None = Field(default=None, alias="viewUrl")
-    company: UpstreamCompany | None = None
-    area: UpstreamArea | None = None
-    compensation: UpstreamCompensation | None = None
-    work_experience: str | None = Field(default=None, alias="workExperience")
-    publication_time: UpstreamPublicationTime = Field(alias="publicationTime")
-    creation_time: datetime | None = Field(default=None, alias="creationTime")
-    snippet: UpstreamSnippet | None = None
+    alternate_url: str
+    employer: HHEmployer | None = None
+    area: HHReference | None = None
+    salary_range: HHSalary | None = None
+    salary: HHSalary | None = None
+    experience: HHReference | None = None
+    published_at: datetime
+    snippet: HHSnippet | None = None
 
 
-class UpstreamSearchResult(BaseModel):
+class HHSearchResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    vacancies: list[UpstreamVacancy]
-    paging: "UpstreamPaging | None" = None
-
-
-class UpstreamPagingNext(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
+    items: list[HHVacancy]
     page: int
-    disabled: bool
+    pages: int
+    per_page: int
+    found: int
 
 
-class UpstreamPaging(BaseModel):
+class HHAddress(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    next: UpstreamPagingNext
-
-
-class UpstreamInitialState(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    vacancy_search_result: UpstreamSearchResult = Field(alias="vacancySearchResult")
-
-
-class UpstreamAddress(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    display_name: str | None = Field(default=None, alias="displayName")
+    raw: str | None = None
     city: str | None = None
     street: str | None = None
 
 
-class UpstreamKeySkills(BaseModel):
+class HHKeySkill(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    key_skill: list[str] = Field(default_factory=list, alias="keySkill")
-
-
-class UpstreamVacancyDetail(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    vacancy_id: int | str = Field(alias="vacancyId")
     name: str
-    description: str
-    publication_date: datetime = Field(alias="publicationDate")
-    valid_through_time: datetime | None = Field(default=None, alias="validThroughTime")
-    work_experience: str | None = Field(default=None, alias="workExperience")
-    company: UpstreamCompany | None = None
-    area: UpstreamArea | None = None
-    compensation: UpstreamCompensation | None = None
-    key_skills: UpstreamKeySkills | None = Field(default=None, alias="keySkills")
-    address: UpstreamAddress | None = None
-    employment_form: str | None = Field(default=None, alias="employmentForm")
-    work_formats: list[str] = Field(default_factory=list, alias="workFormats")
-    work_schedule_by_days: list[str] = Field(
-        default_factory=list,
-        alias="workScheduleByDays",
-    )
-    working_hours: list[str] = Field(default_factory=list, alias="workingHours")
 
 
-class UpstreamVacancyDetailState(BaseModel):
+class HHVacancyDetail(HHVacancy):
     model_config = ConfigDict(extra="ignore")
 
-    vacancy_view: UpstreamVacancyDetail = Field(alias="vacancyView")
+    description: str
+    expires_at: datetime | None = None
+    key_skills: list[HHKeySkill] = Field(default_factory=list)
+    address: HHAddress | None = None
+    employment_form: HHReference | None = None
+    work_format: list[HHReference] = Field(default_factory=list)
+    work_schedule_by_days: list[HHReference] = Field(default_factory=list)
+    working_hours: list[HHReference] = Field(default_factory=list)
+
+
+class HHTokenResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    access_token: str
+    token_type: str
+    expires_in: int | None = Field(default=None, gt=0)

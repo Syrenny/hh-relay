@@ -8,11 +8,47 @@ class RelayError(Exception):
     status_code: int
 
 
+class OAuthConfigurationError(RelayError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="oauth_not_configured",
+            message="hh.ru OAuth credentials are not configured",
+            status_code=503,
+        )
+
+
+class OAuthTokenError(RelayError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="oauth_token_error",
+            message="hh.ru application authorization failed",
+            status_code=502,
+        )
+
+
+class UpstreamUnauthorizedError(RelayError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="upstream_unauthorized",
+            message="hh.ru rejected application authorization",
+            status_code=502,
+        )
+
+
 class UpstreamForbiddenError(RelayError):
     def __init__(self) -> None:
         super().__init__(
             code="upstream_forbidden",
-            message="hh.ru rejected the request",
+            message="hh.ru forbids access to this resource",
+            status_code=502,
+        )
+
+
+class UpstreamRateLimitError(RelayError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="upstream_rate_limited",
+            message="hh.ru request limit was exceeded",
             status_code=502,
         )
 
@@ -31,15 +67,6 @@ class UpstreamHTTPError(RelayError):
         super().__init__(
             code="upstream_http_error",
             message="hh.ru returned an unexpected response",
-            status_code=502,
-        )
-
-
-class UpstreamProxyError(RelayError):
-    def __init__(self) -> None:
-        super().__init__(
-            code="upstream_proxy_unavailable",
-            message="Proxy connection to hh.ru is unavailable",
             status_code=502,
         )
 

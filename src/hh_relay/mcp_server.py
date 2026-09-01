@@ -6,11 +6,10 @@ from mcp.server.fastmcp.exceptions import ToolError
 from mcp.server.transport_security import TransportSecuritySettings
 from mcp.types import ToolAnnotations
 
-from hh_relay.client import HHClient
+from hh_relay.client import HHClient, create_http_client
 from hh_relay.errors import RelayError
 from hh_relay.models import Experience, SearchResponse, VacancyDetail
 from hh_relay.service import VacancyService
-from hh_relay.sing_box import proxy_http_client
 
 READ_ONLY_ANNOTATIONS = ToolAnnotations(
     readOnlyHint=True,
@@ -50,7 +49,7 @@ async def search_vacancies(
     experience: Experience | None = None,
 ) -> SearchResponse:
     try:
-        async with proxy_http_client() as http_client:
+        async with create_http_client() as http_client:
             return await VacancyService(HHClient(http_client)).search(
                 text=text,
                 area=area,
@@ -72,7 +71,7 @@ async def search_vacancies(
 )
 async def get_vacancy(vacancy_id: int) -> VacancyDetail:
     try:
-        async with proxy_http_client() as http_client:
+        async with create_http_client() as http_client:
             return await VacancyService(HHClient(http_client)).get_vacancy(vacancy_id)
     except RelayError as error:
         _raise_tool_error(error)

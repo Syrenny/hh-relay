@@ -1,0 +1,35 @@
+{
+  "items": [
+    {
+      "id": "101",
+      "name": "Python & FastAPI Developer",
+      "alternate_url": "https://hh.ru/vacancy/101",
+      "employer": {"id": "501", "name": "Example Employer"},
+      "area": {"id": "1", "name": "Москва"},
+      "salary_range": {
+        "from": 200000,
+        "to": 300000,
+        "currency": "RUR",
+        "gross": false,
+        "mode": {"id": "MONTH", "name": "За месяц"},
+        "frequency": {"id": "MONTHLY", "name": "Ежемесячно"}
+      },
+      "experience": {"id": "between3And6", "name": "От 3 до 6 лет"},
+      "published_at": "2026-08-25T13:00:00+00:00",
+      "snippet": {
+        "requirement": "Python & SQL",
+        "responsibility": "Backend development"
+      }
+    },
+    {
+      "id": "102",
+      "name": "Old vacancy",
+      "alternate_url": "https://hh.ru/vacancy/102",
+      "published_at": "2026-08-24T13:59:59+00:00"
+    }
+  ],
+  "page": 0,
+  "pages": 1,
+  "per_page": 100,
+  "found": 2
+}

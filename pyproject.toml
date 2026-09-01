@@ -1,12 +1,12 @@
 [project]
 name = "hh-relay"
 version = "0.1.0"
-description = "FastAPI relay for hh.ru SSR vacancy search"
+description = "FastAPI relay for the official hh.ru vacancy API"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.116.1,<0.117",
-    "httpx[socks]>=0.28.1,<0.29",
+    "httpx>=0.28.1,<0.29",
     "mcp>=1.13,<2",
     "pydantic>=2.11.7,<3",
 ]

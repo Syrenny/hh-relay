@@ -1,1 +1,1 @@
-"""hh.ru SSR search relay."""
+"""Relay for the official hh.ru vacancy API."""
