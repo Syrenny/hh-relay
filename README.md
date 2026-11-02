@@ -1,23 +1,22 @@
 # hh-relay
 
-FastAPI relay для Custom GPT Action и MCP, который ищет вакансии через официальный `api.hh.ru`. Публичные клиенты relay не проходят авторизацию: сервер самостоятельно получает application token по OAuth 2.0 Client Credentials.
+FastAPI relay для Custom GPT Action и MCP, который ищет вакансии через официальный `api.hh.ru`. Публичные клиенты relay не проходят авторизацию: сервер использует заранее выпущенный application token из защищённой переменной окружения.
 
 ## Требования и настройка
 
 - Python 3.13;
 - [`uv`](https://docs.astral.sh/uv/);
-- одобренное приложение hh.ru с `client_id` и `client_secret`.
+- одобренное приложение hh.ru и его актуальный application token.
 
-Credentials задаются только в окружении сервера:
+Application token отображается владельцу приложения на `https://dev.hh.ru/admin`. Его нужно выпустить один раз и задать только в окружении сервера:
 
 ```bash
-export HH_CLIENT_ID='...'
-export HH_CLIENT_SECRET='...'
+export HH_ACCESS_TOKEN='...'
 uv sync --all-groups
 uv run uvicorn hh_relay.app:app --reload
 ```
 
-Не передавайте credentials в публичные endpoints и не добавляйте их в Git. `HH-User-Agent` уже задан в приложении как `hh-relay/1.0 (https://github.com/Syrenny/hh-relay)`.
+Не передавайте token в публичные endpoints и не добавляйте его в Git. Relay не вызывает `POST /token` во время работы: повторная выдача application token отзывает предыдущий, а hh.ru запрещает выпускать новый чаще одного раза в пять минут. `HH-User-Agent` уже задан в приложении как `hh-relay/1.0 (https://github.com/Syrenny/hh-relay)`.
 
 ## REST API
 
@@ -44,9 +43,8 @@ OpenAPI доступен по адресу `/openapi.json`. Упрощённая
 
 Relay возвращает стабильный объект `error`. Основные коды:
 
-- `oauth_not_configured` — отсутствуют `HH_CLIENT_ID` или `HH_CLIENT_SECRET`;
-- `oauth_token_error` — hh.ru отказал в получении application token;
-- `upstream_unauthorized` — повторная авторизация после `401` не помогла;
+- `oauth_not_configured` — отсутствует `HH_ACCESS_TOKEN`;
+- `upstream_unauthorized` — hh.ru отклонил настроенный application token;
 - `upstream_forbidden`, `upstream_rate_limited` — ответы `403` и `429`;
 - `upstream_timeout`, `upstream_http_error` — timeout и остальные transport/HTTP ошибки;
 - `upstream_structure_changed` — JSON API не соответствует поддерживаемой схеме;
@@ -77,8 +75,8 @@ git diff --check
 ## Деплой на Vercel
 
 1. Импортируйте репозиторий с preset **FastAPI**.
-2. Добавьте server-side Environment Variables `HH_CLIENT_ID` и `HH_CLIENT_SECRET` для нужных environments.
+2. Добавьте server-side Environment Variable `HH_ACCESS_TOKEN` для нужных environments. Значение возьмите на `https://dev.hh.ru/admin`.
 3. Не задавайте Build Command и Output Directory.
 4. Выполните deployment и проверьте health, REST search/detail и MCP.
 
-После успешной миграции удалите прежнюю переменную `SINGBOX_VLESS_URL` из Vercel. Она больше не используется.
+После успешной миграции удалите прежние переменные `HH_CLIENT_ID`, `HH_CLIENT_SECRET` и `SINGBOX_VLESS_URL` из Vercel. Они больше не используются.

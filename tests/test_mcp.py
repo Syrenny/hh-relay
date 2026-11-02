@@ -57,11 +57,7 @@ def test_mcp_calls_search_tool_with_structured_output(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/token":
-            return httpx.Response(
-                200,
-                json={"access_token": "token", "token_type": "bearer"},
-            )
+        assert request.headers["Authorization"] == "Bearer token"
         payload = json.loads(FIXTURE_PATH.read_text())
         payload["items"] = payload["items"][:1]
         payload["items"][0]["published_at"] = request.url.params["date_to"]
@@ -74,8 +70,7 @@ def test_mcp_calls_search_tool_with_structured_output(
         async with httpx.AsyncClient(transport=transport) as client:
             yield client
 
-    monkeypatch.setenv("HH_CLIENT_ID", "client")
-    monkeypatch.setenv("HH_CLIENT_SECRET", "secret")
+    monkeypatch.setenv("HH_ACCESS_TOKEN", "token")
     monkeypatch.setattr(mcp_server, "create_http_client", create_mock_client)
 
     called = rpc(

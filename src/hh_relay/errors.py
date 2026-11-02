@@ -12,17 +12,8 @@ class OAuthConfigurationError(RelayError):
     def __init__(self) -> None:
         super().__init__(
             code="oauth_not_configured",
-            message="hh.ru OAuth credentials are not configured",
+            message="hh.ru application token is not configured",
             status_code=503,
-        )
-
-
-class OAuthTokenError(RelayError):
-    def __init__(self) -> None:
-        super().__init__(
-            code="oauth_token_error",
-            message="hh.ru application authorization failed",
-            status_code=502,
         )
 
 

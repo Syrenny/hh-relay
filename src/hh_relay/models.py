@@ -193,11 +193,3 @@ class HHVacancyDetail(HHVacancy):
     work_format: list[HHReference] = Field(default_factory=list)
     work_schedule_by_days: list[HHReference] = Field(default_factory=list)
     working_hours: list[HHReference] = Field(default_factory=list)
-
-
-class HHTokenResponse(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    access_token: str
-    token_type: str
-    expires_in: int | None = Field(default=None, gt=0)

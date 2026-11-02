@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from hh_relay.app import app, get_hh_client, get_now
-from hh_relay.client import ApplicationTokenManager, HHClient
+from hh_relay.client import HHClient
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "search.json"
 DETAIL_FIXTURE_PATH = Path(__file__).parent / "fixtures" / "vacancy.json"
@@ -17,11 +17,6 @@ DETAIL_FIXTURE_PATH = Path(__file__).parent / "fixtures" / "vacancy.json"
 @pytest.fixture
 def client(asgi_client: TestClient) -> TestClient:
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/token":
-            return httpx.Response(
-                200,
-                json={"access_token": "token", "token_type": "bearer"},
-            )
         fixture = (
             DETAIL_FIXTURE_PATH
             if request.url.path.startswith("/vacancies/")
@@ -31,11 +26,7 @@ def client(asgi_client: TestClient) -> TestClient:
 
     transport = httpx.MockTransport(handler)
     http_client = httpx.AsyncClient(transport=transport)
-    manager = ApplicationTokenManager(
-        client_id="client",
-        client_secret="secret",  # noqa: S106
-    )
-    app.dependency_overrides[get_hh_client] = lambda: HHClient(http_client, manager)
+    app.dependency_overrides[get_hh_client] = lambda: HHClient(http_client, "token")
     app.dependency_overrides[get_now] = lambda: datetime(
         2026,
         8,
@@ -89,22 +80,13 @@ def test_get_vacancy_returns_full_description(client: TestClient) -> None:
 
 
 def test_get_vacancy_returns_controlled_not_found(client: TestClient) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/token":
-            return httpx.Response(
-                200,
-                json={"access_token": "token", "token_type": "bearer"},
-            )
+    def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(404)
 
     http_client = httpx.AsyncClient(
         transport=httpx.MockTransport(handler),
     )
-    manager = ApplicationTokenManager(
-        client_id="client",
-        client_secret="secret",  # noqa: S106
-    )
-    app.dependency_overrides[get_hh_client] = lambda: HHClient(http_client, manager)
+    app.dependency_overrides[get_hh_client] = lambda: HHClient(http_client, "token")
 
     response = client.get("/api/vacancies/999")
 
