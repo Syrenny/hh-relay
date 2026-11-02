@@ -1,26 +1,23 @@
 {% extends "base.html" %}
-{% block title %}Вакансии · HH Monitor{% endblock %}
+{% block title %}Вакансии{% endblock %}
 {% block content %}
-  <section class="hero">
-    <div>
-      <p class="eyebrow">Персональный мониторинг</p>
-      <h1>Вакансии</h1>
+  <section class="toolbar">
+    <h1>{{ 'Скрытые вакансии' if show_hidden else 'Новые вакансии' }}</h1>
+    <div class="toolbar-actions">
+      <span class="token-count" title="Использовано токенов OpenAI сегодня">{{ '{:,}'.format(tokens_used).replace(',', ' ') }} токенов</span>
+      {% if show_hidden %}
+        <wa-button href="/dashboard" size="small" appearance="outlined">Показать новые</wa-button>
+      {% else %}
+        <wa-button href="/dashboard?show_hidden=true" size="small" appearance="outlined">Показать скрытые</wa-button>
+      {% endif %}
     </div>
-    <wa-badge appearance="filled" variant="brand" pill>{{ vacancies|length }}</wa-badge>
   </section>
 
-  <nav class="filters" aria-label="Фильтр по статусу">
-    <wa-button href="/dashboard" size="small" appearance="{{ 'filled' if not active_status else 'outlined' }}">Все</wa-button>
-    {% for value, label in status_labels.items() %}
-      <wa-button href="/dashboard?vacancy_status={{ value }}" size="small" appearance="{{ 'filled' if active_status == value else 'outlined' }}">{{ label }}</wa-button>
-    {% endfor %}
-  </nav>
-
-  <section class="vacancy-grid">
+  <section class="vacancy-list">
     {% for vacancy in vacancies %}
       <wa-card class="vacancy-card">
         <div class="card-heading">
-          <wa-badge variant="{{ 'success' if vacancy.rating == 'strong' else 'warning' if vacancy.rating == 'debatable' else 'neutral' }}" pill>
+          <wa-badge variant="{{ 'brand' if vacancy.rating == 'strong' else 'neutral' }}" pill>
             {{ rating_labels[vacancy.rating] }}
           </wa-badge>
           <span class="date">{{ vacancy.published_at.strftime('%d.%m %H:%M') }}</span>
@@ -32,16 +29,18 @@
         <div class="actions">
           <wa-button href="{{ vacancy.url }}" target="_blank" size="small" appearance="outlined">hh.ru ↗</wa-button>
           <wa-button href="/dashboard/vacancies/{{ vacancy.id }}" size="small" variant="brand">Подробнее</wa-button>
+          <form method="post" action="/dashboard/vacancies/{{ vacancy.id }}/status">
+            <wa-button type="submit" name="vacancy_status" value="{{ 'new' if show_hidden else 'archived' }}" size="small" appearance="plain">
+              {{ 'Вернуть' if show_hidden else 'Скрыть' }}
+            </wa-button>
+          </form>
         </div>
-        <form method="post" action="/dashboard/vacancies/{{ vacancy.id }}/status" class="status-actions">
-          <button name="vacancy_status" value="interesting">Интересная</button>
-          <button name="vacancy_status" value="applied">Откликнулся</button>
-          <button name="vacancy_status" value="not_suitable">Не подходит</button>
-          <button name="vacancy_status" value="archived">Архив</button>
-        </form>
       </wa-card>
     {% else %}
-      <wa-card class="empty"><h2>Здесь пока пусто</h2><p>Новые вакансии появятся после запуска мониторинга.</p></wa-card>
+      <wa-card class="empty">
+        <h2>{{ 'Скрытых вакансий нет' if show_hidden else 'Новых вакансий пока нет' }}</h2>
+        <p>{{ 'Скрытые карточки появятся здесь.' if show_hidden else 'Они появятся после следующего запуска мониторинга.' }}</p>
+      </wa-card>
     {% endfor %}
   </section>
 {% endblock %}

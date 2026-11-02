@@ -1,3 +1,4 @@
+import asyncio
 import os
 import secrets
 from pathlib import Path
@@ -15,7 +16,6 @@ from hh_relay.config import (
     required_env,
 )
 from hh_relay.database import (
-    VACANCY_STATUSES,
     daily_token_usage,
     get_vacancy,
     latest_cover_letter,
@@ -28,13 +28,6 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 security = HTTPBasic()
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 
-STATUS_LABELS = {
-    "new": "Новые",
-    "interesting": "Интересные",
-    "applied": "Откликнулся",
-    "not_suitable": "Не подходят",
-    "archived": "Архив",
-}
 RATING_LABELS = {
     "strong": "Сильное совпадение",
     "debatable": "Спорно",
@@ -87,7 +80,6 @@ def _salary(value: object) -> str:
 
 
 templates.env.globals.update(
-    status_labels=STATUS_LABELS,
     rating_labels=RATING_LABELS,
     salary_text=_salary,
 )
@@ -97,15 +89,26 @@ templates.env.globals.update(
 async def dashboard(
     request: Request,
     _auth: DashboardAuth,
-    vacancy_status: str | None = None,
+    show_hidden: str | None = None,
 ) -> HTMLResponse:
-    if vacancy_status and vacancy_status not in VACANCY_STATUSES:
-        raise HTTPException(status_code=400, detail="Unknown vacancy status")
-    vacancies = await list_vacancies(required_env("DATABASE_URL"), vacancy_status)
+    database_url = required_env("DATABASE_URL")
+    hidden_view = show_hidden == "true"
+    vacancies, tokens_used = await asyncio.gather(
+        list_vacancies(database_url), daily_token_usage(database_url)
+    )
+    vacancies = [
+        vacancy
+        for vacancy in vacancies
+        if (vacancy["user_status"] == "archived") == hidden_view
+    ]
     return templates.TemplateResponse(
         request=request,
         name="dashboard.html",
-        context={"vacancies": vacancies, "active_status": vacancy_status},
+        context={
+            "vacancies": vacancies,
+            "show_hidden": hidden_view,
+            "tokens_used": tokens_used,
+        },
     )
 
 
