@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Вакансии · HH Monitor{% endblock %}
+{% block content %}
+  <section class="hero">
+    <div>
+      <p class="eyebrow">Персональный мониторинг</p>
+      <h1>Вакансии</h1>
+    </div>
+    <wa-badge appearance="filled" variant="brand" pill>{{ vacancies|length }}</wa-badge>
+  </section>
+
+  <nav class="filters" aria-label="Фильтр по статусу">
+    <wa-button href="/dashboard" size="small" appearance="{{ 'filled' if not active_status else 'outlined' }}">Все</wa-button>
+    {% for value, label in status_labels.items() %}
+      <wa-button href="/dashboard?vacancy_status={{ value }}" size="small" appearance="{{ 'filled' if active_status == value else 'outlined' }}">{{ label }}</wa-button>
+    {% endfor %}
+  </nav>
+
+  <section class="vacancy-grid">
+    {% for vacancy in vacancies %}
+      <wa-card class="vacancy-card">
+        <div class="card-heading">
+          <wa-badge variant="{{ 'success' if vacancy.rating == 'strong' else 'warning' if vacancy.rating == 'debatable' else 'neutral' }}" pill>
+            {{ rating_labels[vacancy.rating] }}
+          </wa-badge>
+          <span class="date">{{ vacancy.published_at.strftime('%d.%m %H:%M') }}</span>
+        </div>
+        <h2><a href="/dashboard/vacancies/{{ vacancy.id }}">{{ vacancy.name }}</a></h2>
+        <p class="company">{{ vacancy.employer or 'Компания не указана' }}</p>
+        <p class="meta">{{ salary_text(vacancy.salary) }} · {{ vacancy.area or 'Локация не указана' }}</p>
+        {% if vacancy.rationale %}<p class="rationale">{{ vacancy.rationale }}</p>{% endif %}
+        <div class="actions">
+          <wa-button href="{{ vacancy.url }}" target="_blank" size="small" appearance="outlined">hh.ru ↗</wa-button>
+          <wa-button href="/dashboard/vacancies/{{ vacancy.id }}" size="small" variant="brand">Подробнее</wa-button>
+        </div>
+        <form method="post" action="/dashboard/vacancies/{{ vacancy.id }}/status" class="status-actions">
+          <button name="vacancy_status" value="interesting">Интересная</button>
+          <button name="vacancy_status" value="applied">Откликнулся</button>
+          <button name="vacancy_status" value="not_suitable">Не подходит</button>
+          <button name="vacancy_status" value="archived">Архив</button>
+        </form>
+      </wa-card>
+    {% else %}
+      <wa-card class="empty"><h2>Здесь пока пусто</h2><p>Новые вакансии появятся после запуска мониторинга.</p></wa-card>
+    {% endfor %}
+  </section>
+{% endblock %}

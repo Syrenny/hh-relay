@@ -1,0 +1,37 @@
+name: Vacancy monitor
+
+on:
+  schedule:
+    # 07:17-23:17 Asia/Novosibirsk (UTC+7), plus a 03:17 night run.
+    - cron: "17 0-16 * * *"
+    - cron: "17 20 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: vacancy-monitor
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: Apply database migrations
+        run: uv run alembic upgrade head
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - name: Find and evaluate vacancies
+        run: uv run python scripts/run_monitor.py
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          EMAIL_FROM: ${{ vars.EMAIL_FROM }}
+          EMAIL_TO: ${{ vars.EMAIL_TO }}
+          DASHBOARD_BASE_URL: ${{ vars.DASHBOARD_BASE_URL }}
+          HH_RELAY_BASE_URL: ${{ vars.HH_RELAY_BASE_URL }}

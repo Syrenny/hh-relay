@@ -1,13 +1,16 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from pathlib import Path as FilePath
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, Path, Query, Request
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from hh_relay.action_schema import build_action_schema
 from hh_relay.client import HHClient, create_http_client
+from hh_relay.dashboard import router as dashboard_router
 from hh_relay.errors import RelayError
 from hh_relay.mcp_server import mcp_http_app
 from hh_relay.models import (
@@ -118,5 +121,11 @@ async def get_vacancy(
     return await VacancyService(client).get_vacancy(vacancy_id)
 
 
+app.include_router(dashboard_router)
+app.mount(
+    "/static",
+    StaticFiles(directory=FilePath(__file__).parent / "static"),
+    name="static",
+)
 app.openapi = build_action_schema
 app.mount("/", mcp_http_app)

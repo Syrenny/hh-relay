@@ -61,6 +61,54 @@ Stateless Streamable HTTP endpoint `/mcp` предоставляет два read
 
 Для опубликованного сервиса используйте `https://hh-relay.vercel.app/mcp` и вариант **No authentication**. Навыки находятся в `skills/find-python-backend-jobs/` и `skills/write-python-cover-letter/`.
 
+## Персональный мониторинг
+
+Закрытый dashboard доступен по `/dashboard`. Он показывает найденные вакансии, оценку соответствия и пользовательские статусы `Новая`, `Интересная`, `Откликнулся`, `Не подходит` и `Архив`. На странице вакансии можно сгенерировать сопроводительное письмо по правилам из `skills/write-python-cover-letter/`.
+
+Интерфейс формируется FastAPI/Jinja и использует Web Awesome без отдельного frontend-приложения. Мониторинг запускается GitHub Actions каждый час с 07:17 до 23:17 по Новосибирску и один раз ночью. При отсутствии новых подходящих вакансий письмо не отправляется.
+
+### Внешние сервисы
+
+- Neon PostgreSQL хранит вакансии, статусы, письма и историю запусков;
+- OpenAI Responses API оценивает вакансии и пишет письма;
+- Resend отправляет email;
+- GitHub Actions выполняет длительный monitor script вне лимита Vercel Function.
+
+Создайте OpenAI project и включите подходящую настройку sharing inputs/outputs в API Platform, если хотите использовать доступные организации complimentary tokens. По умолчанию используется eligible-модель `gpt-5.4-mini`; код не переключается на другую платную модель автоматически.
+
+### Vercel Environment Variables
+
+```text
+DATABASE_URL
+OPENAI_API_KEY
+DASHBOARD_USERNAME
+DASHBOARD_PASSWORD
+```
+
+`DATABASE_URL`, `OPENAI_API_KEY` и пароль являются секретами. Dashboard защищён HTTP Basic и должен использоваться только через HTTPS. Дневной предел по умолчанию равен 250 000 токенов. Модель и предел можно необязательно переопределить через `OPENAI_MODEL` и `OPENAI_DAILY_TOKEN_BUDGET`.
+
+Перед deployment примените миграции Alembic:
+
+```bash
+DATABASE_URL='...' uv run alembic upgrade head
+```
+
+### GitHub Actions
+
+Добавьте repository secrets:
+
+- `DATABASE_URL`;
+- `OPENAI_API_KEY`;
+- `RESEND_API_KEY`.
+
+Добавьте repository variables:
+
+- `EMAIL_FROM` и `EMAIL_TO`;
+- `DASHBOARD_BASE_URL`, например `https://hh-relay.vercel.app/dashboard`;
+- `HH_RELAY_BASE_URL`, например `https://hh-relay.vercel.app`.
+
+Sender в `EMAIL_FROM` должен быть разрешён настройками Resend. Первый запуск выполните вручную через workflow **Vacancy monitor**, затем проверьте запись вакансий, dashboard и доставку письма.
+
 ## Проверки
 
 ```bash

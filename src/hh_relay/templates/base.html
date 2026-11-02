@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}HH Monitor{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist/styles/webawesome.css">
+    <link rel="stylesheet" href="/static/dashboard.css">
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist/webawesome.loader.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a href="/dashboard" class="brand">HH Monitor</a>
+      <span class="subtitle">Python backend</span>
+    </header>
+    <main class="container">{% block content %}{% endblock %}</main>
+    <script src="/static/dashboard.js" defer></script>
+  </body>
+</html>

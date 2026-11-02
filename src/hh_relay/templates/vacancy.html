@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{{ vacancy.name }} · HH Monitor{% endblock %}
+{% block content %}
+  <a class="back" href="/dashboard">← Все вакансии</a>
+  <section class="detail-layout">
+    <wa-card class="detail-card">
+      <wa-badge variant="{{ 'success' if vacancy.rating == 'strong' else 'warning' if vacancy.rating == 'debatable' else 'neutral' }}" pill>{{ rating_labels[vacancy.rating] }}</wa-badge>
+      <h1>{{ vacancy.name }}</h1>
+      <p class="company">{{ vacancy.employer or 'Компания не указана' }}</p>
+      <p class="meta">{{ salary_text(vacancy.salary) }} · {{ vacancy.area or 'Локация не указана' }}</p>
+      {% if vacancy.rationale %}<h2>Оценка</h2><p>{{ vacancy.rationale }}</p>{% endif %}
+      {% if vacancy.requirements %}<h2>Главное</h2><ul>{% for item in vacancy.requirements %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}
+      {% if vacancy.warnings %}<wa-callout variant="warning"><ul>{% for item in vacancy.warnings %}<li>{{ item }}</li>{% endfor %}</ul></wa-callout>{% endif %}
+      <div class="actions"><wa-button href="{{ vacancy.url }}" target="_blank" variant="brand">Открыть на hh.ru ↗</wa-button></div>
+    </wa-card>
+
+    <wa-card class="letter-card">
+      <div class="card-heading"><h2>Сопроводительное письмо</h2></div>
+      {% if letter %}
+        {% if letter.warning %}<wa-callout variant="warning">{{ letter.warning }}</wa-callout>{% endif %}
+        {% if letter.special_requirement %}<wa-callout variant="brand">Работодатель просит: {{ letter.special_requirement }}</wa-callout>{% endif %}
+        {% if letter.question %}<wa-callout variant="warning">Нужно уточнить: {{ letter.question }}</wa-callout>{% endif %}
+        {% if letter.letter %}
+          <textarea id="letter-text" rows="18" readonly>{{ letter.letter }}</textarea>
+          <wa-button id="copy-letter" variant="brand">Скопировать</wa-button>
+        {% endif %}
+      {% else %}
+        <p>Письмо ещё не создавалось.</p>
+      {% endif %}
+      <form method="post" action="/dashboard/vacancies/{{ vacancy.id }}/cover-letter">
+        <wa-button type="submit" appearance="outlined">{{ 'Создать новую версию' if letter else 'Сгенерировать письмо' }}</wa-button>
+      </form>
+    </wa-card>
+  </section>
+{% endblock %}
