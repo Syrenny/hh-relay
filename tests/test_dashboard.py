@@ -98,6 +98,37 @@ def test_dashboard_orders_vacancies_by_tier(
     assert "Tier rejected" not in response.text
 
 
+def test_hidden_dashboard_includes_rejected_vacancies(
+    asgi_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DASHBOARD_USERNAME", "ilya")
+    monkeypatch.setenv("DASHBOARD_PASSWORD", "secret")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://unused")
+    vacancies = [
+        {
+            "id": "rejected",
+            "user_status": "new",
+            "name": "Rejected vacancy",
+            "tier": "rejected",
+            "published_at": datetime(2026, 11, 6, tzinfo=UTC),
+            "employer": None,
+            "salary": None,
+            "area": None,
+            "rationale": "Does not match the candidate profile.",
+            "url": "https://example.com/rejected",
+        }
+    ]
+    monkeypatch.setattr(dashboard, "list_vacancies", AsyncMock(return_value=vacancies))
+
+    response = asgi_client.get("/dashboard?show_hidden=true", auth=("ilya", "secret"))
+
+    assert response.status_code == 200
+    assert "Rejected vacancy" in response.text
+    assert "tier-rejected" in response.text
+    assert 'action="/dashboard/vacancies/rejected/status"' not in response.text
+
+
 def test_status_change_rejects_cross_origin_request(
     asgi_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,

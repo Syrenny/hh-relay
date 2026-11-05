@@ -36,11 +36,13 @@
                 <div class="actions">
                   <a class="button button-secondary" href="{{ vacancy.url }}" target="_blank" rel="noopener">hh.ru ↗</a>
                   <a class="button button-primary" href="/dashboard/vacancies/{{ vacancy.id }}">Подробнее</a>
-                  <form method="post" action="/dashboard/vacancies/{{ vacancy.id }}/status">
-                    <button class="button button-quiet" type="submit" name="vacancy_status" value="{{ 'new' if show_hidden else 'archived' }}">
-                      {{ 'Вернуть' if show_hidden else 'Скрыть' }}
-                    </button>
-                  </form>
+                  {% if tier != 'rejected' %}
+                    <form method="post" action="/dashboard/vacancies/{{ vacancy.id }}/status">
+                      <button class="button button-quiet" type="submit" name="vacancy_status" value="{{ 'new' if show_hidden else 'archived' }}">
+                        {{ 'Вернуть' if show_hidden else 'Скрыть' }}
+                      </button>
+                    </form>
+                  {% endif %}
                 </div>
               </article>
             {% endfor %}

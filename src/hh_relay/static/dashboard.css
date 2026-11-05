@@ -1,5 +1,5 @@
 :root {
-  color-scheme: light;
+  color-scheme: light dark;
   --page: var(--wa-color-neutral-95, #f4f4f5);
   --surface: #fff;
   --text: var(--wa-color-neutral-10, #18181b);
@@ -7,26 +7,35 @@
   --line: var(--wa-color-neutral-90, #e4e4e7);
   --accent: var(--wa-color-brand-50, #6366f1);
   --accent-hover: var(--wa-color-brand-40, #4f46e5);
+  --tier-s: #ff7f7f;
+  --tier-a: #ffbf7f;
+  --tier-b: #ffdf7f;
+  --tier-c: #bfff7f;
+  --tier-text: #351d1d;
+  --shadow: 0 1px 2px rgb(0 0 0 / 5%);
 }
 
 * { box-sizing: border-box; }
 body { margin: 0; min-height: 100vh; background: var(--page); color: var(--text); font-family: var(--wa-font-family-body, Inter, ui-sans-serif, system-ui, sans-serif); }
 a { color: inherit; }
 button, textarea { font: inherit; }
-.container { width: min(880px, calc(100% - 2rem)); margin: 0 auto; padding: 2.5rem 0 5rem; }
+.container { width: min(1040px, calc(100% - 2rem)); margin: 0 auto; padding: 2.5rem 0 5rem; }
 .toolbar, .card-heading, .actions { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
 .toolbar { margin-bottom: 1.25rem; }
 .toolbar h1 { margin: 0; font-size: clamp(1.6rem, 4vw, 2.25rem); letter-spacing: -.035em; }
 .tier-list { display: grid; gap: 2rem; }
-.tier-section { display: grid; grid-template-columns: 9rem minmax(0, 1fr); gap: 1rem; align-items: start; }
-.tier-heading { display: flex; align-items: center; gap: .75rem; position: sticky; top: 1rem; }
-.tier-heading h2 { margin: 0; font-size: 1rem; }
+.tier-section { display: grid; grid-template-columns: 12rem minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+.tier-heading { display: grid; grid-template-columns: 2.5rem minmax(0, 1fr); align-items: center; gap: .75rem; position: sticky; top: 1rem; min-width: 0; }
+.tier-heading h2 { margin: 0; font-size: 1rem; line-height: 1.2; overflow-wrap: anywhere; }
 .tier-heading div > span { color: var(--muted); font-size: .8rem; }
 .tier-mark { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; width: 2.5rem; height: 2.5rem; border-radius: var(--wa-border-radius-m, .5rem); background: var(--page); border: 1px solid var(--line); color: var(--text); font-size: 1.15rem; font-weight: 800; }
-.tier-s { background: var(--accent); border-color: var(--accent); color: #fff; }
-.tier-a { background: var(--wa-color-brand-95, #eef2ff); border-color: var(--wa-color-brand-80, #c7d2fe); color: var(--wa-color-brand-30, #4338ca); }
+.tier-s { background: var(--tier-s); border-color: var(--tier-s); color: var(--tier-text); }
+.tier-a { background: var(--tier-a); border-color: var(--tier-a); color: var(--tier-text); }
+.tier-b { background: var(--tier-b); border-color: var(--tier-b); color: var(--tier-text); }
+.tier-c { background: var(--tier-c); border-color: var(--tier-c); color: var(--tier-text); }
+.tier-rejected { background: var(--muted); border-color: var(--muted); color: var(--surface); font-size: .8rem; }
 .vacancy-list { display: grid; gap: .75rem; }
-.vacancy-card, .detail-card, .empty { display: block; padding: 1.25rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--wa-border-radius-l, .75rem); box-shadow: 0 1px 2px rgb(0 0 0 / 5%); }
+.vacancy-card, .detail-card, .empty { display: block; min-width: 0; padding: 1.25rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--wa-border-radius-l, .75rem); box-shadow: var(--shadow); }
 .vacancy-card h3 { margin: .8rem 0 .25rem; font-size: 1.2rem; letter-spacing: -.02em; }
 .vacancy-card h3 a { text-decoration: none; }
 .vacancy-card h3 a:hover { color: var(--accent-hover); }
@@ -54,8 +63,24 @@ button, textarea { font: inherit; }
 textarea { width: 100%; resize: vertical; border: 1px solid var(--line); border-radius: var(--wa-border-radius-m, .5rem); padding: 1rem; margin: .75rem 0; line-height: 1.5; background: var(--surface); color: var(--text); }
 .empty { text-align: center; }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #111113;
+    --surface: #1c1c1f;
+    --text: #f4f4f5;
+    --muted: #a1a1aa;
+    --line: #343438;
+    --accent: #818cf8;
+    --accent-hover: #a5b4fc;
+    --shadow: 0 1px 2px rgb(0 0 0 / 35%);
+  }
+
+  .button-primary { color: #111113; }
+  .button-secondary:hover, .button-quiet:hover { border-color: #52525b; }
+}
+
 @media (max-width: 760px) {
-  .container { width: min(100% - 1rem, 880px); padding-top: 1.25rem; }
+  .container { width: min(100% - 1rem, 1040px); padding-top: 1.25rem; }
   .toolbar { align-items: flex-start; }
   .tier-section { grid-template-columns: 1fr; }
   .tier-heading { position: static; }

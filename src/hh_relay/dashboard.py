@@ -25,6 +25,7 @@ TIER_LABELS = {
     "B": "Есть оговорки",
     "C": "Слабое совпадение",
 }
+REJECTED_LABEL = "Не подходит"
 
 
 def _authenticate(
@@ -85,15 +86,24 @@ async def dashboard(
     database_url = required_env("DATABASE_URL")
     hidden_view = show_hidden == "true"
     vacancies = await list_vacancies(database_url)
-    vacancies = [
-        vacancy
-        for vacancy in vacancies
-        if (vacancy["user_status"] == "archived") == hidden_view
-        and vacancy["tier"] in TIER_LABELS
-    ]
+    if hidden_view:
+        vacancies = [
+            vacancy
+            for vacancy in vacancies
+            if vacancy["tier"] == "rejected"
+            or (vacancy["tier"] in TIER_LABELS and vacancy["user_status"] == "archived")
+        ]
+        visible_tiers = {**TIER_LABELS, "rejected": REJECTED_LABEL}
+    else:
+        vacancies = [
+            vacancy
+            for vacancy in vacancies
+            if vacancy["tier"] in TIER_LABELS and vacancy["user_status"] == "new"
+        ]
+        visible_tiers = TIER_LABELS
     tier_groups = [
-        (tier, TIER_LABELS[tier], [item for item in vacancies if item["tier"] == tier])
-        for tier in TIER_LABELS
+        (tier, label, [item for item in vacancies if item["tier"] == tier])
+        for tier, label in visible_tiers.items()
     ]
     return templates.TemplateResponse(
         request=request,
