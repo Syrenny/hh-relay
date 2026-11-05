@@ -1,4 +1,3 @@
-import asyncio
 import os
 import secrets
 from pathlib import Path
@@ -9,18 +8,10 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
 
-from hh_relay.ai_service import CoverLetterResult, generate_cover_letter
-from hh_relay.config import (
-    DEFAULT_DAILY_TOKEN_BUDGET,
-    DEFAULT_OPENAI_MODEL,
-    required_env,
-)
+from hh_relay.config import required_env
 from hh_relay.database import (
-    daily_token_usage,
     get_vacancy,
-    latest_cover_letter,
     list_vacancies,
-    save_cover_letter,
     update_vacancy_status,
 )
 
@@ -28,11 +19,11 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 security = HTTPBasic()
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 
-RATING_LABELS = {
-    "strong": "Сильное совпадение",
-    "debatable": "Спорно",
-    "skip": "Не стоит тратить время",
-    None: "Ожидает оценки",
+TIER_LABELS = {
+    "S": "Приоритетный отклик",
+    "A": "Хорошее совпадение",
+    "B": "Есть оговорки",
+    "C": "Слабое совпадение",
 }
 
 
@@ -80,7 +71,7 @@ def _salary(value: object) -> str:
 
 
 templates.env.globals.update(
-    rating_labels=RATING_LABELS,
+    tier_labels=TIER_LABELS,
     salary_text=_salary,
 )
 
@@ -93,21 +84,23 @@ async def dashboard(
 ) -> HTMLResponse:
     database_url = required_env("DATABASE_URL")
     hidden_view = show_hidden == "true"
-    vacancies, tokens_used = await asyncio.gather(
-        list_vacancies(database_url), daily_token_usage(database_url)
-    )
+    vacancies = await list_vacancies(database_url)
     vacancies = [
         vacancy
         for vacancy in vacancies
         if (vacancy["user_status"] == "archived") == hidden_view
+        and vacancy["tier"] in TIER_LABELS
+    ]
+    tier_groups = [
+        (tier, TIER_LABELS[tier], [item for item in vacancies if item["tier"] == tier])
+        for tier in TIER_LABELS
     ]
     return templates.TemplateResponse(
         request=request,
         name="dashboard.html",
         context={
-            "vacancies": vacancies,
+            "tier_groups": tier_groups,
             "show_hidden": hidden_view,
-            "tokens_used": tokens_used,
         },
     )
 
@@ -122,11 +115,10 @@ async def vacancy_page(
     vacancy = await get_vacancy(database_url, vacancy_id)
     if vacancy is None:
         raise HTTPException(status_code=404, detail="Vacancy not found")
-    letter = await latest_cover_letter(database_url, vacancy_id)
     return templates.TemplateResponse(
         request=request,
         name="vacancy.html",
-        context={"vacancy": vacancy, "letter": letter},
+        context={"vacancy": vacancy},
     )
 
 
@@ -146,37 +138,3 @@ async def set_vacancy_status(
     return RedirectResponse(
         request.headers.get("referer", "/dashboard"), status_code=303
     )
-
-
-@router.post("/vacancies/{vacancy_id}/cover-letter")
-async def create_cover_letter(
-    request: Request,
-    vacancy_id: str,
-    _auth: DashboardAuth,
-) -> RedirectResponse:
-    _verify_origin(request)
-    database_url = required_env("DATABASE_URL")
-    budget = int(
-        os.getenv("OPENAI_DAILY_TOKEN_BUDGET") or str(DEFAULT_DAILY_TOKEN_BUDGET)
-    )
-    if await daily_token_usage(database_url) >= budget:
-        raise HTTPException(status_code=429, detail="Daily OpenAI token budget reached")
-    vacancy = await get_vacancy(database_url, vacancy_id)
-    if vacancy is None:
-        raise HTTPException(status_code=404, detail="Vacancy not found")
-    model = os.getenv("OPENAI_MODEL") or DEFAULT_OPENAI_MODEL
-    result = await generate_cover_letter(
-        api_key=required_env("OPENAI_API_KEY"),
-        model=model,
-        vacancy=vacancy["detail"],
-    )
-    letter = CoverLetterResult.model_validate(result.payload)
-    await save_cover_letter(
-        database_url,
-        vacancy_id,
-        letter.model_dump(),
-        model,
-        input_tokens=result.input_tokens,
-        output_tokens=result.output_tokens,
-    )
-    return RedirectResponse(f"/dashboard/vacancies/{vacancy_id}", status_code=303)

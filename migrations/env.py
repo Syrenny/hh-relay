@@ -2,7 +2,7 @@ from logging.config import fileConfig
 from os import environ
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import engine_from_config, pool, text
 
 config = context.config
 
@@ -31,6 +31,7 @@ def run_migrations_online() -> None:
     with connectable.connect() as connection:
         context.configure(connection=connection)
         with context.begin_transaction():
+            connection.execute(text("SELECT pg_advisory_xact_lock(6847321901)"))
             context.run_migrations()
 
 

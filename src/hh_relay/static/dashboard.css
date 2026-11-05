@@ -1,43 +1,62 @@
 :root {
-  --page: var(--wa-color-surface-lowered);
-  --surface: var(--wa-color-surface-default);
-  --text: var(--wa-color-text-normal);
-  --muted: var(--wa-color-text-quiet);
-  --line: var(--wa-color-surface-border);
+  color-scheme: light;
+  --page: var(--wa-color-neutral-95, #f4f4f5);
+  --surface: #fff;
+  --text: var(--wa-color-neutral-10, #18181b);
+  --muted: var(--wa-color-neutral-40, #71717a);
+  --line: var(--wa-color-neutral-90, #e4e4e7);
+  --accent: var(--wa-color-brand-50, #6366f1);
+  --accent-hover: var(--wa-color-brand-40, #4f46e5);
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--page); color: var(--text); font-family: var(--wa-font-family-body); min-height: 100vh; }
+body { margin: 0; min-height: 100vh; background: var(--page); color: var(--text); font-family: var(--wa-font-family-body, Inter, ui-sans-serif, system-ui, sans-serif); }
 a { color: inherit; }
+button, textarea { font: inherit; }
 .container { width: min(880px, calc(100% - 2rem)); margin: 0 auto; padding: 2.5rem 0 5rem; }
-.toolbar, .card-heading, .actions, .toolbar-actions { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.toolbar, .card-heading, .actions { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
 .toolbar { margin-bottom: 1.25rem; }
 .toolbar h1 { margin: 0; font-size: clamp(1.6rem, 4vw, 2.25rem); letter-spacing: -.035em; }
-.toolbar-actions { justify-content: flex-end; }
-.token-count { color: var(--muted); font-size: var(--wa-font-size-s); white-space: nowrap; }
+.tier-list { display: grid; gap: 2rem; }
+.tier-section { display: grid; grid-template-columns: 9rem minmax(0, 1fr); gap: 1rem; align-items: start; }
+.tier-heading { display: flex; align-items: center; gap: .75rem; position: sticky; top: 1rem; }
+.tier-heading h2 { margin: 0; font-size: 1rem; }
+.tier-heading div > span { color: var(--muted); font-size: .8rem; }
+.tier-mark { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; width: 2.5rem; height: 2.5rem; border-radius: var(--wa-border-radius-m, .5rem); background: var(--page); border: 1px solid var(--line); color: var(--text); font-size: 1.15rem; font-weight: 800; }
+.tier-s { background: var(--accent); border-color: var(--accent); color: #fff; }
+.tier-a { background: var(--wa-color-brand-95, #eef2ff); border-color: var(--wa-color-brand-80, #c7d2fe); color: var(--wa-color-brand-30, #4338ca); }
 .vacancy-list { display: grid; gap: .75rem; }
-.vacancy-card::part(base), .detail-card::part(base), .letter-card::part(base), .empty::part(base) { background: var(--surface); border-color: var(--line); border-radius: var(--wa-border-radius-l); box-shadow: var(--wa-shadow-s); }
-.vacancy-card h2 { margin: .8rem 0 .25rem; font-size: 1.2rem; letter-spacing: -.02em; }
-.vacancy-card h2 a { text-decoration: none; }
-.vacancy-card h2 a:hover { color: var(--wa-color-text-link); }
-.company { font-weight: var(--wa-font-weight-semibold); }
+.vacancy-card, .detail-card, .empty { display: block; padding: 1.25rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--wa-border-radius-l, .75rem); box-shadow: 0 1px 2px rgb(0 0 0 / 5%); }
+.vacancy-card h3 { margin: .8rem 0 .25rem; font-size: 1.2rem; letter-spacing: -.02em; }
+.vacancy-card h3 a { text-decoration: none; }
+.vacancy-card h3 a:hover { color: var(--accent-hover); }
+.company { margin: .25rem 0; font-weight: 600; }
 .date, .meta { color: var(--muted); }
+.meta { margin: .75rem 0; }
 .rationale { line-height: 1.55; }
 .actions { justify-content: flex-start; flex-wrap: wrap; margin-top: 1rem; }
-.actions form { margin-left: auto; }
+.actions form { margin: 0 0 0 auto; }
+.button { display: inline-flex; align-items: center; justify-content: center; min-height: 2.25rem; padding: .45rem .75rem; border: 1px solid transparent; border-radius: var(--wa-border-radius-m, .5rem); font-size: .875rem; font-weight: 600; line-height: 1; text-decoration: none; cursor: pointer; transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease; }
+.button-primary { background: var(--accent); color: #fff; }
+.button-primary:hover { background: var(--accent-hover); }
+.button-secondary { background: var(--surface); border-color: var(--line); color: var(--text); }
+.button-secondary:hover { background: var(--page); border-color: var(--wa-color-neutral-80, #d4d4d8); }
+.button-quiet { background: transparent; color: var(--muted); }
+.button-quiet:hover { background: var(--page); color: var(--text); }
+.button:focus-visible, .vacancy-card h3 a:focus-visible, .back:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 35%, transparent); outline-offset: 2px; }
 .back { display: inline-block; margin-bottom: 1.25rem; color: var(--muted); text-decoration: none; }
-.detail-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(320px, .8fr); gap: 1rem; align-items: start; }
+.back:hover { color: var(--text); }
 .detail-card h1 { font-size: clamp(1.8rem, 4vw, 3rem); letter-spacing: -.05em; }
-.detail-card h2, .letter-card h2 { margin-top: 1.5rem; }
+.detail-card h2 { margin-top: 1.5rem; }
 .detail-card li { margin: .5rem 0; line-height: 1.5; }
-.letter-card { position: sticky; top: 1rem; }
-textarea { width: 100%; resize: vertical; border: 1px solid var(--line); border-radius: var(--wa-border-radius-m); padding: 1rem; margin: .75rem 0; font: inherit; line-height: 1.5; background: var(--surface); color: var(--text); }
+.callout { margin: .75rem 0; padding: .8rem 1rem; border-left: 3px solid var(--line); border-radius: .25rem; background: var(--page); }
+.callout-brand { border-color: var(--accent); }
+textarea { width: 100%; resize: vertical; border: 1px solid var(--line); border-radius: var(--wa-border-radius-m, .5rem); padding: 1rem; margin: .75rem 0; line-height: 1.5; background: var(--surface); color: var(--text); }
 .empty { text-align: center; }
 
 @media (max-width: 760px) {
   .container { width: min(100% - 1rem, 880px); padding-top: 1.25rem; }
   .toolbar { align-items: flex-start; }
-  .toolbar-actions { align-items: flex-end; flex-direction: column; }
-  .detail-layout { grid-template-columns: 1fr; }
-  .letter-card { position: static; }
+  .tier-section { grid-template-columns: 1fr; }
+  .tier-heading { position: static; }
 }

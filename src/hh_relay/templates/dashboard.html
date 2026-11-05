@@ -2,45 +2,58 @@
 {% block title %}Вакансии{% endblock %}
 {% block content %}
   <section class="toolbar">
-    <h1>{{ 'Скрытые вакансии' if show_hidden else 'Новые вакансии' }}</h1>
-    <div class="toolbar-actions">
-      <span class="token-count" title="Использовано токенов OpenAI сегодня">{{ '{:,}'.format(tokens_used).replace(',', ' ') }} токенов</span>
-      {% if show_hidden %}
-        <wa-button href="/dashboard" size="small" appearance="outlined">Показать новые</wa-button>
-      {% else %}
-        <wa-button href="/dashboard?show_hidden=true" size="small" appearance="outlined">Показать скрытые</wa-button>
-      {% endif %}
-    </div>
+    <h1>{{ 'Скрытые вакансии' if show_hidden else 'Вакансии' }}</h1>
+    {% if show_hidden %}
+      <a class="button button-secondary" href="/dashboard">Показать новые</a>
+    {% else %}
+      <a class="button button-secondary" href="/dashboard?show_hidden=true">Показать скрытые</a>
+    {% endif %}
   </section>
 
-  <section class="vacancy-list">
-    {% for vacancy in vacancies %}
-      <wa-card class="vacancy-card">
-        <div class="card-heading">
-          <wa-badge variant="{{ 'brand' if vacancy.rating == 'strong' else 'neutral' }}" pill>
-            {{ rating_labels[vacancy.rating] }}
-          </wa-badge>
-          <span class="date">{{ vacancy.published_at.strftime('%d.%m %H:%M') }}</span>
-        </div>
-        <h2><a href="/dashboard/vacancies/{{ vacancy.id }}">{{ vacancy.name }}</a></h2>
-        <p class="company">{{ vacancy.employer or 'Компания не указана' }}</p>
-        <p class="meta">{{ salary_text(vacancy.salary) }} · {{ vacancy.area or 'Локация не указана' }}</p>
-        {% if vacancy.rationale %}<p class="rationale">{{ vacancy.rationale }}</p>{% endif %}
-        <div class="actions">
-          <wa-button href="{{ vacancy.url }}" target="_blank" size="small" appearance="outlined">hh.ru ↗</wa-button>
-          <wa-button href="/dashboard/vacancies/{{ vacancy.id }}" size="small" variant="brand">Подробнее</wa-button>
-          <form method="post" action="/dashboard/vacancies/{{ vacancy.id }}/status">
-            <wa-button type="submit" name="vacancy_status" value="{{ 'new' if show_hidden else 'archived' }}" size="small" appearance="plain">
-              {{ 'Вернуть' if show_hidden else 'Скрыть' }}
-            </wa-button>
-          </form>
-        </div>
-      </wa-card>
-    {% else %}
-      <wa-card class="empty">
-        <h2>{{ 'Скрытых вакансий нет' if show_hidden else 'Новых вакансий пока нет' }}</h2>
-        <p>{{ 'Скрытые карточки появятся здесь.' if show_hidden else 'Они появятся после следующего запуска мониторинга.' }}</p>
-      </wa-card>
+  <div class="tier-list">
+    {% set state = namespace(has_vacancies=false) %}
+    {% for tier, label, vacancies in tier_groups %}
+      {% if vacancies %}
+        {% set state.has_vacancies = true %}
+        <section class="tier-section" aria-labelledby="tier-{{ tier }}">
+          <header class="tier-heading">
+            <span class="tier-mark tier-{{ tier|lower }}">{{ tier }}</span>
+            <div>
+              <h2 id="tier-{{ tier }}">{{ label }}</h2>
+              <span>{{ vacancies|length }}</span>
+            </div>
+          </header>
+          <div class="vacancy-list">
+            {% for vacancy in vacancies %}
+              <article class="vacancy-card">
+                <div class="card-heading">
+                  <span class="company">{{ vacancy.employer or 'Компания не указана' }}</span>
+                  <time class="date" datetime="{{ vacancy.published_at.isoformat() }}">{{ vacancy.published_at.strftime('%d.%m %H:%M') }}</time>
+                </div>
+                <h3><a href="/dashboard/vacancies/{{ vacancy.id }}">{{ vacancy.name }}</a></h3>
+                <p class="meta">{{ salary_text(vacancy.salary) }} · {{ vacancy.area or 'Локация не указана' }}</p>
+                {% if vacancy.rationale %}<p class="rationale">{{ vacancy.rationale }}</p>{% endif %}
+                <div class="actions">
+                  <a class="button button-secondary" href="{{ vacancy.url }}" target="_blank" rel="noopener">hh.ru ↗</a>
+                  <a class="button button-primary" href="/dashboard/vacancies/{{ vacancy.id }}">Подробнее</a>
+                  <form method="post" action="/dashboard/vacancies/{{ vacancy.id }}/status">
+                    <button class="button button-quiet" type="submit" name="vacancy_status" value="{{ 'new' if show_hidden else 'archived' }}">
+                      {{ 'Вернуть' if show_hidden else 'Скрыть' }}
+                    </button>
+                  </form>
+                </div>
+              </article>
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
     {% endfor %}
-  </section>
+
+    {% if not state.has_vacancies %}
+      <article class="empty">
+        <h2>{{ 'Скрытых вакансий нет' if show_hidden else 'Новых вакансий пока нет' }}</h2>
+        <p>{{ 'Скрытые карточки появятся здесь.' if show_hidden else 'ChatGPT добавит их после следующего запуска задачи.' }}</p>
+      </article>
+    {% endif %}
+  </div>
 {% endblock %}

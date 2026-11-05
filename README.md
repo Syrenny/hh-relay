@@ -54,60 +54,46 @@ Relay возвращает стабильный объект `error`. Основ
 
 ## MCP для ChatGPT
 
-Stateless Streamable HTTP endpoint `/mcp` предоставляет два read-only инструмента:
+Stateless Streamable HTTP endpoint `/mcp` предоставляет инструменты:
 
-- `search_vacancies` — компактный поиск;
-- `get_vacancy` — полная карточка по ID.
+- `search_vacancies` — компактный поиск, исключающий уже классифицированные ID;
+- `get_vacancy` — полная карточка по ID;
+- `save_classified_vacancies` — идемпотентно сохраняет до 15 обработанных свежих вакансий с классификацией `S/A/B/C/rejected`.
 
 Для опубликованного сервиса используйте `https://hh-relay.vercel.app/mcp` и вариант **No authentication**. Навыки находятся в `skills/find-python-backend-jobs/` и `skills/write-python-cover-letter/`.
 
+Write-tool повторно получает каждую карточку с официального API hh.ru и не принимает от модели название, URL или описание. `rationale` обязателен для любой классификации, включая `rejected`. Все успешно сохранённые ID исключаются из последующих MCP-поисков; REST-поиск остаётся независимым от базы. В личной версии endpoint не использует OAuth, поэтому mutation дополнительно ограничена свежими каноническими вакансиями, batch size и строгой схемой. Не используйте этот вариант для чувствительных или многопользовательских данных.
+
 ## Персональный мониторинг
 
-Закрытый dashboard доступен по `/dashboard`. Он показывает найденные вакансии, оценку соответствия и пользовательские статусы `Новая`, `Интересная`, `Откликнулся`, `Не подходит` и `Архив`. На странице вакансии можно сгенерировать сопроводительное письмо по правилам из `skills/write-python-cover-letter/`.
+Закрытый dashboard доступен по `/dashboard`. Он группирует сохранённые вакансии по tier `S/A/B/C`; вакансию можно скрыть и позднее вернуть.
 
-Интерфейс формируется FastAPI/Jinja и использует Web Awesome без отдельного frontend-приложения. Мониторинг запускается GitHub Actions каждый час с 07:17 до 23:17 по Новосибирску и один раз ночью. При отсутствии новых подходящих вакансий письмо не отправляется.
+Интерфейс формируется FastAPI/Jinja и использует палитру Web Awesome без отдельного frontend-приложения. Поиск и оценку выполняет scheduled task ChatGPT с загруженным skill `find-python-backend-jobs`; готовый prompt находится в `skills/find-python-backend-jobs/SCHEDULED_TASK_PROMPT.md`.
 
 ### Внешние сервисы
 
-- Neon PostgreSQL хранит вакансии, статусы, письма и историю запусков;
-- OpenAI Responses API оценивает вакансии и пишет письма;
-- Resend отправляет email;
-- GitHub Actions выполняет длительный monitor script вне лимита Vercel Function.
-
-Создайте OpenAI project и включите подходящую настройку sharing inputs/outputs в API Platform, если хотите использовать доступные организации complimentary tokens. По умолчанию используется eligible-модель `gpt-5.4-mini`; код не переключается на другую платную модель автоматически.
+- Neon PostgreSQL хранит вакансии и пользовательский признак «Скрыто»;
+- ChatGPT через MCP ищет, оценивает и сохраняет вакансии;
+- Vercel обслуживает relay, MCP и dashboard.
 
 ### Vercel Environment Variables
 
 ```text
+HH_ACCESS_TOKEN
 DATABASE_URL
-OPENAI_API_KEY
 DASHBOARD_USERNAME
 DASHBOARD_PASSWORD
 ```
 
-`DATABASE_URL`, `OPENAI_API_KEY` и пароль являются секретами. Dashboard защищён HTTP Basic и должен использоваться только через HTTPS. Дневной предел по умолчанию равен 250 000 токенов. Модель и предел можно необязательно переопределить через `OPENAI_MODEL` и `OPENAI_DAILY_TOKEN_BUDGET`.
+Все четыре значения задаются только на сервере; токен, URL базы и пароль являются секретами. Dashboard защищён HTTP Basic и должен использоваться только через HTTPS. Переменные прежнего monitor pipeline (`OPENAI_API_KEY`, `RESEND_API_KEY`, `OPENAI_MODEL`, `OPENAI_DAILY_TOKEN_BUDGET`) больше не используются и после успешной проверки deployment могут быть удалены.
 
-Перед deployment примените миграции Alembic:
+Production deployment автоматически применяет миграции Alembic через `run.sh` до публикации новой Vercel-сборки. Скрипт пропускает preview/development environments и использует PostgreSQL advisory lock для защиты от параллельных production builds. Для ручного локального запуска:
 
 ```bash
 DATABASE_URL='...' uv run alembic upgrade head
 ```
 
-### GitHub Actions
-
-Добавьте repository secrets:
-
-- `DATABASE_URL`;
-- `OPENAI_API_KEY`;
-- `RESEND_API_KEY`.
-
-Добавьте repository variables:
-
-- `EMAIL_FROM` и `EMAIL_TO`;
-- `DASHBOARD_BASE_URL`, например `https://hh-relay.vercel.app/dashboard`;
-- `HH_RELAY_BASE_URL`, например `https://hh-relay.vercel.app`.
-
-Sender в `EMAIL_FROM` должен быть разрешён настройками Resend. Первый запуск выполните вручную через workflow **Vacancy monitor**, затем проверьте запись вакансий, dashboard и доставку письма.
+После deployment обновите подключение MCP plugin в ChatGPT, вручную запустите skill и проверьте цепочку `search_vacancies → get_vacancy → save_classified_vacancies → dashboard`. Повторный поиск не должен возвращать успешно классифицированные ID. Только после этого создавайте расписание из подготовленного prompt.
 
 ## Проверки
 

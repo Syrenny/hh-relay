@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "bash run.sh",
   "functions": {
     "api/index.py": {
       "includeFiles": "{src,skills}/**",

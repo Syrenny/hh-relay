@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import StrEnum
+from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
@@ -9,6 +10,14 @@ class Experience(StrEnum):
     BETWEEN_ONE_AND_THREE = "between1And3"
     BETWEEN_THREE_AND_SIX = "between3And6"
     MORE_THAN_SIX = "moreThan6"
+
+
+class VacancyTier(StrEnum):
+    S = "S"
+    A = "A"
+    B = "B"
+    C = "C"
+    REJECTED = "rejected"
 
 
 class SearchQuery(BaseModel):
@@ -100,6 +109,29 @@ class VacancyDetail(Vacancy):
 
 class HealthResponse(BaseModel):
     status: str
+
+
+ShortNote = Annotated[str, Field(min_length=1, max_length=300)]
+
+
+class ClassifiedVacancy(BaseModel):
+    vacancy_id: int = Field(ge=1)
+    tier: VacancyTier
+    rationale: str = Field(min_length=1, max_length=1000)
+    requirements: list[ShortNote] = Field(default_factory=list, max_length=10)
+    warnings: list[ShortNote] = Field(default_factory=list, max_length=10)
+
+
+class SaveFailure(BaseModel):
+    vacancy_id: int
+    code: str
+
+
+class SaveClassifiedVacanciesResult(BaseModel):
+    created: list[int] = Field(default_factory=list)
+    updated: list[int] = Field(default_factory=list)
+    unchanged: list[int] = Field(default_factory=list)
+    failed: list[SaveFailure] = Field(default_factory=list)
 
 
 class ErrorDetail(BaseModel):
