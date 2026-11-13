@@ -63,6 +63,14 @@ button, textarea { font: inherit; }
 .callout-brand { border-color: var(--accent); }
 textarea { width: 100%; resize: vertical; border: 1px solid var(--line); border-radius: var(--wa-border-radius-m, .5rem); padding: 1rem; margin: .75rem 0; line-height: 1.5; background: var(--surface); color: var(--text); }
 .empty { text-align: center; }
+.settings-card { max-width: 44rem; margin: 0 auto; }
+.settings-card h1 { margin-top: 0; }
+.field-label, fieldset legend { font-weight: 700; }
+.field-help { margin: -.4rem 0 1.25rem; color: var(--muted); font-size: .875rem; }
+fieldset { margin: 0; padding: 0; border: 0; }
+.checkbox-row { display: flex; align-items: center; gap: .6rem; margin-top: .75rem; }
+.checkbox-row input { width: 1rem; height: 1rem; accent-color: var(--accent); }
+.settings-error { padding: .75rem 1rem; border: 1px solid #ef4444; border-radius: .5rem; color: #dc2626; }
 
 @media (prefers-color-scheme: dark) {
   :root {

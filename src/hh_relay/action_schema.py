@@ -42,38 +42,17 @@ def build_action_schema() -> dict[str, Any]:
                     "operationId": "searchVacancies",
                     "summary": "Найти вакансии за последние 24 часа",
                     "description": (
-                        "Возвращает не более 50 свежих вакансий. Для полного "
+                        "Выполняет настроенную сервером матрицу запросов и возвращает "
+                        "страницу ещё не классифицированных вакансий. Для полного "
                         "описания вызовите getVacancy, передав полученный ID."
                     ),
                     "parameters": [
                         {
-                            "name": "text",
-                            "in": "query",
-                            "required": True,
-                            "description": "Поисковый запрос, например Python backend.",
-                            "schema": {"type": "string"},
-                        },
-                        {
-                            "name": "area",
+                            "name": "cursor",
                             "in": "query",
                             "required": False,
-                            "description": "ID региона hh.ru, например 1 для Москвы.",
-                            "schema": {"type": "integer", "minimum": 1},
-                        },
-                        {
-                            "name": "experience",
-                            "in": "query",
-                            "required": False,
-                            "description": "Требуемый опыт работы.",
-                            "schema": {
-                                "type": "string",
-                                "enum": [
-                                    "noExperience",
-                                    "between1And3",
-                                    "between3And6",
-                                    "moreThan6",
-                                ],
-                            },
+                            "description": "Cursor returned by the previous page.",
+                            "schema": {"type": "string", "maxLength": 500},
                         },
                     ],
                     "responses": {
@@ -145,19 +124,23 @@ def build_action_schema() -> dict[str, Any]:
                     "type": "object",
                     "properties": {
                         "count": {"type": "integer"},
+                        "total_count": {"type": "integer"},
                         "vacancies": {
                             "type": "array",
                             "items": {"$ref": "#/components/schemas/VacancySummary"},
                         },
+                        "next_cursor": {"type": ["string", "null"]},
+                        "queries_executed": {"type": "integer"},
                         "pages_fetched": {"type": "integer"},
-                        "truncated": {"type": "boolean"},
                         "cutoff": {"type": "string"},
                     },
                     "required": [
                         "count",
+                        "total_count",
                         "vacancies",
+                        "next_cursor",
+                        "queries_executed",
                         "pages_fetched",
-                        "truncated",
                         "cutoff",
                     ],
                 },

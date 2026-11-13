@@ -78,3 +78,12 @@ class VacancyNotFoundError(RelayError):
             message="Vacancy was not found on hh.ru",
             status_code=404,
         )
+
+
+class InvalidCursorError(RelayError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="invalid_cursor",
+            message="Search cursor is invalid",
+            status_code=400,
+        )

@@ -4,6 +4,7 @@
   <section class="toolbar">
     <h1>{{ 'Скрытые вакансии' if show_hidden else 'Вакансии' }}</h1>
     <div class="toolbar-actions">
+      <a class="button button-quiet" href="/dashboard/settings">Настройки</a>
       {% if show_hidden %}
         <a class="button button-secondary" href="/dashboard">Показать новые</a>
       {% else %}

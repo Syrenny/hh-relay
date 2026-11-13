@@ -5,6 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from hh_relay import dashboard
+from hh_relay.models import Experience, SearchSettings
 
 
 def test_dashboard_requires_authentication(asgi_client: TestClient) -> None:
@@ -191,3 +192,77 @@ def test_archive_all_vacancies(
     assert response.status_code == 303
     assert response.headers["location"] == "/dashboard"
     archive_all.assert_awaited_once_with("postgresql://unused")
+
+
+def test_dashboard_renders_search_settings(
+    asgi_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DASHBOARD_USERNAME", "ilya")
+    monkeypatch.setenv("DASHBOARD_PASSWORD", "secret")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://unused")
+    monkeypatch.setattr(
+        dashboard,
+        "get_search_settings",
+        AsyncMock(
+            return_value=SearchSettings(
+                queries=["Python backend", "FastAPI"],
+                experiences=[Experience.NO_EXPERIENCE],
+            )
+        ),
+    )
+
+    response = asgi_client.get("/dashboard/settings", auth=("ilya", "secret"))
+
+    assert response.status_code == 200
+    assert "Python backend" in response.text
+    assert "FastAPI" in response.text
+    assert 'value="noExperience" checked' in response.text
+    assert 'value="between1And3" checked' not in response.text
+
+
+def test_dashboard_saves_search_settings(
+    asgi_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DASHBOARD_USERNAME", "ilya")
+    monkeypatch.setenv("DASHBOARD_PASSWORD", "secret")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://unused")
+    save = AsyncMock()
+    monkeypatch.setattr(dashboard, "save_search_settings", save)
+
+    response = asgi_client.post(
+        "/dashboard/settings",
+        auth=("ilya", "secret"),
+        headers={"Origin": "http://testserver"},
+        data={
+            "queries": " Python backend \nFastAPI",
+            "experiences": ["noExperience", "between1And3"],
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    settings = save.await_args.args[1]
+    assert settings.queries == ["Python backend", "FastAPI"]
+    assert settings.experiences == [
+        Experience.NO_EXPERIENCE,
+        Experience.BETWEEN_ONE_AND_THREE,
+    ]
+
+
+def test_dashboard_rejects_invalid_search_settings(
+    asgi_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DASHBOARD_USERNAME", "ilya")
+    monkeypatch.setenv("DASHBOARD_PASSWORD", "secret")
+
+    response = asgi_client.post(
+        "/dashboard/settings",
+        auth=("ilya", "secret"),
+        headers={"Origin": "http://testserver"},
+        data={"queries": "Python\npython"},
+    )
+
+    assert response.status_code == 422

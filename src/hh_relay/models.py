@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
 
 
 class Experience(StrEnum):
@@ -20,21 +20,27 @@ class VacancyTier(StrEnum):
     REJECTED = "rejected"
 
 
-class SearchQuery(BaseModel):
-    text: str = Field(
+class SearchSettings(BaseModel):
+    queries: list[Annotated[str, Field(min_length=1, max_length=100)]] = Field(
         min_length=1,
-        max_length=512,
-        description="Поисковый запрос, например Python FastAPI.",
+        max_length=30,
     )
-    area: int | None = Field(
-        default=None,
-        ge=1,
-        description="Числовой ID региона hh.ru, например 1 для Москвы.",
-    )
-    experience: Experience | None = Field(
-        default=None,
-        description="Требуемый опыт работы в формате hh.ru.",
-    )
+    experiences: list[Experience] = Field(min_length=1, max_length=2)
+
+    @model_validator(mode="after")
+    def normalize_and_validate(self) -> "SearchSettings":
+        normalized = [query.strip() for query in self.queries]
+        if any(not query for query in normalized):
+            msg = "Search queries must not be blank"
+            raise ValueError(msg)
+        if len({query.casefold() for query in normalized}) != len(normalized):
+            msg = "Search queries must be unique"
+            raise ValueError(msg)
+        if len(set(self.experiences)) != len(self.experiences):
+            msg = "Search experiences must be unique"
+            raise ValueError(msg)
+        self.queries = normalized
+        return self
 
 
 class Employer(BaseModel):
@@ -84,9 +90,11 @@ class Vacancy(VacancySummary):
 
 class SearchResponse(BaseModel):
     count: int
+    total_count: int
     vacancies: list[VacancySummary]
+    next_cursor: str | None = None
+    queries_executed: int
     pages_fetched: int
-    truncated: bool
     cutoff: datetime
 
 

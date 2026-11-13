@@ -9,15 +9,14 @@ from pydantic import Field
 
 from hh_relay.client import HHClient, create_http_client
 from hh_relay.config import required_env
-from hh_relay.database import known_vacancy_ids
 from hh_relay.errors import RelayError
 from hh_relay.models import (
     ClassifiedVacancy,
-    Experience,
     SaveClassifiedVacanciesResult,
     SearchResponse,
     VacancyDetail,
 )
+from hh_relay.search_flow import search_new_vacancies
 from hh_relay.selection_service import save_classified_vacancies as save_classifications
 from hh_relay.service import VacancyService
 
@@ -37,7 +36,8 @@ WRITE_ANNOTATIONS = ToolAnnotations(
 mcp = FastMCP(
     name="hh.ru Vacancy Relay",
     instructions=(
-        "Сначала ищите компактный список вакансий через search_vacancies. "
+        "Получите все страницы вакансий через search_vacancies, передавая только "
+        "возвращённый next_cursor. "
         "Вызывайте get_vacancy только для выбранных ID, когда нужно полное описание. "
         "Классифицируйте все обработанные вакансии и сохраняйте результат через "
         "save_classified_vacancies, добавляя rejected для неподходящих позиций."
@@ -55,36 +55,26 @@ mcp = FastMCP(
     name="search_vacancies",
     title="Поиск свежих вакансий hh.ru",
     description=(
-        "Ищет ещё не классифицированные вакансии за последние 24 часа. Возвращает "
-        "компактный список без snippet и полного описания; успешно сохранённые "
-        "ранее ID исключаются по Neon."
+        "Выполняет настроенную сервером матрицу поиска за последние 24 часа. "
+        "Возвращает страницу ещё не классифицированных вакансий и next_cursor; "
+        "клиент не управляет запросами, регионами или опытом."
     ),
     annotations=READ_ONLY_ANNOTATIONS,
     structured_output=True,
 )
 async def search_vacancies(
-    text: str,
-    area: int | None = None,
-    experience: Experience | None = None,
+    cursor: Annotated[str | None, Field(max_length=500)] = None,
 ) -> SearchResponse:
     try:
         async with create_http_client() as http_client:
-            response = await VacancyService(HHClient(http_client)).search(
-                text=text,
-                area=area,
-                experience=experience,
+            return await search_new_vacancies(
+                VacancyService(HHClient(http_client)),
+                required_env("DATABASE_URL"),
                 now=datetime.now(UTC),
+                cursor=cursor,
             )
     except RelayError as error:
         _raise_tool_error(error)
-    known_ids = await known_vacancy_ids(
-        required_env("DATABASE_URL"), [item.id for item in response.vacancies]
-    )
-    response.vacancies = [
-        item for item in response.vacancies if item.id not in known_ids
-    ]
-    response.count = len(response.vacancies)
-    return response
 
 
 @mcp.tool(

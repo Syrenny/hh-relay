@@ -2,13 +2,16 @@ import asyncio
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
 from fastapi.testclient import TestClient
 
+import hh_relay.app as app_module
 from hh_relay.app import app, get_hh_client, get_now
 from hh_relay.client import HHClient
+from hh_relay.models import SearchResponse, VacancySummary
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "search.json"
 DETAIL_FIXTURE_PATH = Path(__file__).parent / "fixtures" / "vacancy.json"
@@ -46,30 +49,43 @@ def test_health_does_not_call_upstream(client: TestClient) -> None:
     assert response.json() == {"status": "ok"}
 
 
-def test_search_returns_normalized_response(client: TestClient) -> None:
+def test_search_returns_normalized_response(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    search = AsyncMock(
+        return_value=SearchResponse(
+            count=1,
+            total_count=1,
+            vacancies=[
+                VacancySummary(
+                    id="101",
+                    name="Python Developer",
+                    url="https://hh.ru/vacancy/101",
+                    salary={"from_": 200000},
+                    published_at="2026-08-25T13:00:00Z",
+                )
+            ],
+            queries_executed=14,
+            pages_fetched=14,
+            cutoff="2026-08-24T14:00:00Z",
+        )
+    )
+    monkeypatch.setenv("DATABASE_URL", "postgresql://database")
+    monkeypatch.setattr(app_module, "search_new_vacancies", search)
     response = client.get(
         "/api/vacancies/search",
-        params={"text": "Python", "area": 1},
+        params={"cursor": "next"},
     )
 
     assert response.status_code == 200
     body = response.json()
     assert body["count"] == 1
-    assert body["pages_fetched"] == 1
-    assert body["truncated"] is False
+    assert body["pages_fetched"] == 14
     assert body["cutoff"] == "2026-08-24T14:00:00Z"
     assert body["vacancies"][0]["id"] == "101"
     assert body["vacancies"][0]["salary"]["from"] == 200000
     assert "snippet" not in body["vacancies"][0]
-
-
-def test_search_validates_query(client: TestClient) -> None:
-    response = client.get(
-        "/api/vacancies/search",
-        params={"text": ""},
-    )
-
-    assert response.status_code == 422
+    assert search.await_args.kwargs["cursor"] == "next"
 
 
 def test_get_vacancy_returns_full_description(client: TestClient) -> None:
@@ -99,11 +115,7 @@ def test_openapi_exposes_only_public_search_parameters() -> None:
     schema = app.openapi()
     operation = schema["paths"]["/api/vacancies/search"]["get"]
 
-    assert [parameter["name"] for parameter in operation["parameters"]] == [
-        "text",
-        "area",
-        "experience",
-    ]
+    assert [parameter["name"] for parameter in operation["parameters"]] == ["cursor"]
     assert operation["operationId"] == "searchVacancies"
     assert (
         schema["paths"]["/api/vacancies/{vacancy_id}"]["get"]["operationId"]

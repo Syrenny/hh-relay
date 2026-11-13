@@ -6,7 +6,41 @@ from typing import Any, Final
 import psycopg
 from psycopg.rows import dict_row
 
+from hh_relay.models import SearchSettings
+from hh_relay.service import DEFAULT_SEARCH_SETTINGS
+
 VACANCY_STATUSES: Final = frozenset({"new", "archived"})
+
+
+async def get_search_settings(database_url: str) -> SearchSettings:
+    async with await psycopg.AsyncConnection.connect(
+        database_url, row_factory=dict_row
+    ) as connection:
+        result = await connection.execute(
+            "SELECT queries, experiences FROM search_settings WHERE id = 1"
+        )
+        row = await result.fetchone()
+    if row is None:
+        return DEFAULT_SEARCH_SETTINGS.model_copy(deep=True)
+    return SearchSettings.model_validate(row)
+
+
+async def save_search_settings(database_url: str, settings: SearchSettings) -> None:
+    async with await psycopg.AsyncConnection.connect(database_url) as connection:
+        await connection.execute(
+            """
+            INSERT INTO search_settings (id, queries, experiences)
+            VALUES (1, %s, %s)
+            ON CONFLICT (id) DO UPDATE SET
+                queries = EXCLUDED.queries,
+                experiences = EXCLUDED.experiences,
+                updated_at = now()
+            """,
+            (
+                json.dumps(settings.queries),
+                [item.value for item in settings.experiences],
+            ),
+        )
 
 
 async def known_vacancy_ids(database_url: str, ids: Sequence[str]) -> set[str]:

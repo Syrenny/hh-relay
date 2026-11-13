@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Настройки поиска · Вакансии{% endblock %}
+{% block content %}
+  <a class="back" href="/dashboard">← К вакансиям</a>
+  <article class="detail-card settings-card">
+    <h1>Настройки поиска</h1>
+    <p class="meta">Relay выполняет все комбинации запросов и выбранного опыта за последние 24 часа.</p>
+    {% if error %}<p class="settings-error" role="alert">{{ error }}</p>{% endif %}
+    <form method="post" action="/dashboard/settings">
+      <label class="field-label" for="queries">Поисковые запросы</label>
+      <textarea id="queries" name="queries" rows="10" required>{% for query in settings.queries %}{{ query }}{% if not loop.last %}
+{% endif %}{% endfor %}</textarea>
+      <p class="field-help">Один запрос на строку, максимум 30.</p>
+
+      <fieldset>
+        <legend>Опыт</legend>
+        <label class="checkbox-row">
+          <input type="checkbox" name="experiences" value="noExperience"{% if 'noExperience' in settings.experiences %} checked{% endif %}>
+          Без опыта
+        </label>
+        <label class="checkbox-row">
+          <input type="checkbox" name="experiences" value="between1And3"{% if 'between1And3' in settings.experiences %} checked{% endif %}>
+          От 1 года до 3 лет
+        </label>
+      </fieldset>
+      <div class="actions">
+        <button class="button button-primary" type="submit">Сохранить настройки</button>
+      </div>
+    </form>
+  </article>
+{% endblock %}

@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from hh_relay.action_schema import build_action_schema
 from hh_relay.client import HHClient, create_http_client
+from hh_relay.config import required_env
 from hh_relay.dashboard import router as dashboard_router
 from hh_relay.errors import RelayError
 from hh_relay.mcp_server import mcp_http_app
@@ -17,10 +18,10 @@ from hh_relay.models import (
     ErrorDetail,
     ErrorResponse,
     HealthResponse,
-    SearchQuery,
     SearchResponse,
     VacancyDetail,
 )
+from hh_relay.search_flow import search_new_vacancies
 from hh_relay.service import VacancyService
 
 
@@ -81,8 +82,8 @@ async def health() -> HealthResponse:
     operation_id="searchVacancies",
     summary="Найти свежие вакансии на hh.ru",
     description=(
-        "Самостоятельно обходит страницы и возвращает нормализованные вакансии, "
-        "опубликованные за последние 24 часа, без дублей по ID."
+        "Выполняет настроенную сервером матрицу и возвращает страницу ещё не "
+        "классифицированных вакансий за последние 24 часа без дублей по ID."
     ),
     response_model_by_alias=True,
     responses={
@@ -93,13 +94,13 @@ async def health() -> HealthResponse:
 async def search_vacancies(
     client: HHClientDependency,
     now: NowDependency,
-    query: Annotated[SearchQuery, Query()],
+    cursor: Annotated[str | None, Query(max_length=500)] = None,
 ) -> SearchResponse:
-    return await VacancyService(client).search(
-        text=query.text,
-        area=query.area,
-        experience=query.experience,
+    return await search_new_vacancies(
+        VacancyService(client),
+        required_env("DATABASE_URL"),
         now=now,
+        cursor=cursor,
     )
 
 

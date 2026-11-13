@@ -4,17 +4,21 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
+from pydantic import ValidationError
 
 from hh_relay.config import required_env
 from hh_relay.database import (
     archive_visible_vacancies,
+    get_search_settings,
     get_vacancy,
     list_vacancies,
+    save_search_settings,
     update_vacancy_status,
 )
+from hh_relay.models import Experience, SearchSettings
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 security = HTTPBasic()
@@ -78,6 +82,21 @@ templates.env.globals.update(
 )
 
 
+def _settings_response(
+    request: Request,
+    settings: SearchSettings,
+    error: str | None = None,
+    *,
+    status_code: int = 200,
+) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request=request,
+        name="settings.html",
+        context={"settings": settings, "error": error},
+        status_code=status_code,
+    )
+
+
 @router.get("", response_class=HTMLResponse)
 async def dashboard(
     request: Request,
@@ -114,6 +133,45 @@ async def dashboard(
             "show_hidden": hidden_view,
         },
     )
+
+
+@router.get("/settings", response_class=HTMLResponse)
+async def settings_page(
+    request: Request,
+    _auth: DashboardAuth,
+) -> HTMLResponse:
+    settings = await get_search_settings(required_env("DATABASE_URL"))
+    return _settings_response(request, settings)
+
+
+@router.post("/settings", response_class=HTMLResponse)
+async def update_settings(
+    request: Request,
+    _auth: DashboardAuth,
+    queries: Annotated[str, Form()],
+    experiences: Annotated[list[str] | None, Form()] = None,
+) -> Response:
+    _verify_origin(request)
+    try:
+        settings = SearchSettings(
+            queries=queries.splitlines(),
+            experiences=experiences or [],
+        )
+    except ValidationError:
+        fallback = SearchSettings.model_construct(
+            queries=queries.splitlines(),
+            experiences=[
+                item for item in Experience if item.value in (experiences or [])
+            ],
+        )
+        return _settings_response(
+            request,
+            fallback,
+            "Укажите уникальные непустые запросы и выберите хотя бы один опыт.",
+            status_code=422,
+        )
+    await save_search_settings(required_env("DATABASE_URL"), settings)
+    return RedirectResponse("/dashboard/settings", status_code=303)
 
 
 @router.get("/vacancies/{vacancy_id}", response_class=HTMLResponse)
