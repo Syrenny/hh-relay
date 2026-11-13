@@ -20,8 +20,9 @@ body { margin: 0; min-height: 100vh; background: var(--page); color: var(--text)
 a { color: inherit; }
 button, textarea { font: inherit; }
 .container { width: min(1040px, calc(100% - 2rem)); margin: 0 auto; padding: 2.5rem 0 5rem; }
-.toolbar, .card-heading, .actions { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.toolbar, .toolbar-actions, .card-heading, .actions { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
 .toolbar { margin-bottom: 1.25rem; }
+.toolbar-actions form { margin: 0; }
 .toolbar h1 { margin: 0; font-size: clamp(1.6rem, 4vw, 2.25rem); letter-spacing: -.035em; }
 .tier-list { display: grid; gap: 2rem; }
 .tier-section { display: grid; grid-template-columns: 12rem minmax(0, 1fr); gap: 1.25rem; align-items: start; }
@@ -82,6 +83,7 @@ textarea { width: 100%; resize: vertical; border: 1px solid var(--line); border-
 @media (max-width: 760px) {
   .container { width: min(100% - 1rem, 1040px); padding-top: 1.25rem; }
   .toolbar { align-items: flex-start; }
+  .toolbar-actions { align-items: stretch; flex-direction: column-reverse; }
   .tier-section { grid-template-columns: 1fr; }
   .tier-heading { position: static; }
 }

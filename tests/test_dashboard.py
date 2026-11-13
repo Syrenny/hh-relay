@@ -169,3 +169,25 @@ def test_status_change_updates_vacancy(
 
     assert response.status_code == 303
     update.assert_awaited_once_with("postgresql://unused", "101", "archived")
+
+
+def test_archive_all_vacancies(
+    asgi_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DASHBOARD_USERNAME", "ilya")
+    monkeypatch.setenv("DASHBOARD_PASSWORD", "secret")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://unused")
+    archive_all = AsyncMock(return_value=3)
+    monkeypatch.setattr(dashboard, "archive_visible_vacancies", archive_all)
+
+    response = asgi_client.post(
+        "/dashboard/vacancies/archive-all",
+        auth=("ilya", "secret"),
+        headers={"Origin": "http://testserver"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/dashboard"
+    archive_all.assert_awaited_once_with("postgresql://unused")

@@ -3,11 +3,16 @@
 {% block content %}
   <section class="toolbar">
     <h1>{{ 'Скрытые вакансии' if show_hidden else 'Вакансии' }}</h1>
-    {% if show_hidden %}
-      <a class="button button-secondary" href="/dashboard">Показать новые</a>
-    {% else %}
-      <a class="button button-secondary" href="/dashboard?show_hidden=true">Показать скрытые</a>
-    {% endif %}
+    <div class="toolbar-actions">
+      {% if show_hidden %}
+        <a class="button button-secondary" href="/dashboard">Показать новые</a>
+      {% else %}
+        <form method="post" action="/dashboard/vacancies/archive-all">
+          <button class="button button-quiet" type="submit">Скрыть все</button>
+        </form>
+        <a class="button button-secondary" href="/dashboard?show_hidden=true">Показать скрытые</a>
+      {% endif %}
+    </div>
   </section>
 
   <div class="tier-list">

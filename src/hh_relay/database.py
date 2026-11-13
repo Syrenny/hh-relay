@@ -152,3 +152,15 @@ async def update_vacancy_status(
             (status, vacancy_id),
         )
         return result.rowcount == 1
+
+
+async def archive_visible_vacancies(database_url: str) -> int:
+    async with await psycopg.AsyncConnection.connect(database_url) as connection:
+        result = await connection.execute(
+            """
+            UPDATE vacancies
+            SET user_status = 'archived', updated_at = now()
+            WHERE user_status = 'new' AND tier IN ('S', 'A', 'B', 'C')
+            """
+        )
+        return result.rowcount

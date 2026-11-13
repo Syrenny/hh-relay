@@ -10,6 +10,7 @@ from fastapi.templating import Jinja2Templates
 
 from hh_relay.config import required_env
 from hh_relay.database import (
+    archive_visible_vacancies,
     get_vacancy,
     list_vacancies,
     update_vacancy_status,
@@ -148,3 +149,13 @@ async def set_vacancy_status(
     return RedirectResponse(
         request.headers.get("referer", "/dashboard"), status_code=303
     )
+
+
+@router.post("/vacancies/archive-all")
+async def archive_all_vacancies(
+    request: Request,
+    _auth: DashboardAuth,
+) -> RedirectResponse:
+    _verify_origin(request)
+    await archive_visible_vacancies(required_env("DATABASE_URL"))
+    return RedirectResponse("/dashboard", status_code=303)
